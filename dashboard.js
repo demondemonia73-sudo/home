@@ -4,7 +4,7 @@
 
 async function cargarDashboard() {
     const tabsContent = document.getElementById('tabsContent');
-    tabsContent.innerHTML = '<div class="card"><p class="text-center">Cargando datos...</p></div>';
+    tabsContent.innerHTML = '<div class="card loading">Cargando datos...</div>';
     
     try {
         const [pedidosRes, clientesRes] = await Promise.all([
@@ -55,7 +55,7 @@ async function cargarDashboard() {
         
         const { data: pedidos } = await db
             .from('pedidos')
-            .select('*, clientes(nombre)')
+            .select('*, clients(nombre)')
             .order('created_at', { ascending: false })
             .limit(10);
         
@@ -64,7 +64,7 @@ async function cargarDashboard() {
             tbody.innerHTML = pedidos.map(p => `
                 <tr>
                     <td><strong>${p.codigo}</strong></td>
-                    <td>${p.clientes?.nombre || 'N/A'}</td>
+                    <tr>${p.clientes?.nombre || 'N/A'}</td>
                     <td><span class="badge badge-${p.estado}">${p.estado}</span></td>
                     <td>$${p.total}</td>
                     <td>${new Date(p.created_at).toLocaleDateString()}</td>
