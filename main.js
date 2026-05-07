@@ -38,10 +38,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Configurar navegación por tabs
     const tabs = document.querySelectorAll('.tab-btn');
-    const tabModules = {
+        const tabModules = {
         'dashboard': cargarDashboard,
         'pedidos': cargarPedidos,
-        'productos': cargarProductos,
+        'productos': cargarProductos, 
         'clientes': cargarClientes,
         'trabajadores': cargarTrabajadores,
         'reportes': cargarReportes
