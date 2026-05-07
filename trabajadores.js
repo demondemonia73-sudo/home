@@ -28,11 +28,11 @@ async function cargarTrabajadores() {
                 </div>
                 <div class="form-group">
                     <label>Contraseña *</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña" style="flex: 1;">
-                        <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️ Mostrar</button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña" style="flex: 1; filter: blur(4px); transition: filter 0.2s;">
+                        <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️</button>
                     </div>
-                    <small class="text-muted">Mantén clic en "Mostrar" para ver la contraseña</small>
+                    <small class="text-muted">Haz clic en el ojo para mostrar/ocultar la contraseña. La contraseña se ve borrosa hasta que la reveles.</small>
                 </div>
                 <div class="form-group">
                     <label>Áreas de trabajo</label>
@@ -59,21 +59,21 @@ async function cargarTrabajadores() {
     const toggleBtn = document.getElementById('togglePasswordBtn');
     const passwordInput = document.getElementById('trabajadorPassword');
     if (toggleBtn && passwordInput) {
-        let timeout;
-        toggleBtn.onmousedown = () => {
-            passwordInput.type = 'text';
-            timeout = setTimeout(() => {
+        let passwordVisible = false;
+        toggleBtn.onclick = () => {
+            passwordVisible = !passwordVisible;
+            if (passwordVisible) {
+                passwordInput.type = 'text';
+                passwordInput.style.filter = 'blur(0px)';
+                toggleBtn.textContent = '🙈';
+            } else {
                 passwordInput.type = 'password';
-            }, 2000);
+                passwordInput.style.filter = 'blur(4px)';
+                toggleBtn.textContent = '👁️';
+            }
         };
-        toggleBtn.onmouseup = () => {
-            clearTimeout(timeout);
-            passwordInput.type = 'password';
-        };
-        toggleBtn.onmouseleave = () => {
-            clearTimeout(timeout);
-            passwordInput.type = 'password';
-        };
+        // Inicialmente borrosa
+        passwordInput.style.filter = 'blur(4px)';
     }
     
     await cargarAreas();
@@ -119,7 +119,15 @@ function mostrarFormularioNuevo() {
     document.getElementById('formTitulo').textContent = '📝 Nuevo Trabajador';
     document.getElementById('trabajadorNombre').value = '';
     document.getElementById('trabajadorEmail').value = '';
-    document.getElementById('trabajadorPassword').value = '';
+    
+    const passwordInput = document.getElementById('trabajadorPassword');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    if (passwordInput) {
+        passwordInput.value = '';
+        passwordInput.type = 'password';
+        passwordInput.style.filter = 'blur(4px)';
+        if (toggleBtn) toggleBtn.textContent = '👁️';
+    }
     
     document.querySelectorAll('.area-checkbox').forEach(cb => cb.checked = false);
     document.getElementById('formTrabajador').style.display = 'block';
@@ -131,7 +139,15 @@ function editarTrabajador(trabajador, areasAsignadas) {
     document.getElementById('formTitulo').textContent = `✏️ Editando: ${trabajador.nombre}`;
     document.getElementById('trabajadorNombre').value = trabajador.nombre;
     document.getElementById('trabajadorEmail').value = trabajador.email;
-    document.getElementById('trabajadorPassword').value = trabajador.password_visible || '';
+    
+    const passwordInput = document.getElementById('trabajadorPassword');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    if (passwordInput) {
+        passwordInput.value = trabajador.password_visible || '';
+        passwordInput.type = 'password';
+        passwordInput.style.filter = 'blur(4px)';
+        if (toggleBtn) toggleBtn.textContent = '👁️';
+    }
     
     document.querySelectorAll('.area-checkbox').forEach(cb => {
         cb.checked = areasAsignadas.includes(parseInt(cb.value));
@@ -317,7 +333,10 @@ async function refrescarListaTrabajadores() {
                     <td>${t.id}</td>
                     <td><strong>${t.nombre}</strong></td>
                     <td>${t.email}</td>
-                    <td><code>••••••</code> <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑</button></td>
+                    <td style="position: relative;">
+                        <span style="filter: blur(4px); cursor: pointer;" onclick="this.style.filter='blur(0px)'; setTimeout(()=>{this.style.filter='blur(4px)'}, 3000);">••••••</span>
+                        <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
+                    </td
                     <td><small>${areasNombres}</small></td>
                     <td>
                         <span class="badge" style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white;">
