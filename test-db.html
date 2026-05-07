@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <h2>Diagnóstico</h2>
+    <pre id="resultado">Cargando...</pre>
+    <script>
+        async function test() {
+            const out = document.getElementById('resultado');
+            out.innerHTML = 'Probando conexión...\n';
+            
+            const { data: cats, error: e1 } = await db.from('categorias').select('*');
+            out.innerHTML += `\n📁 Categorías: ${cats?.length || 0} - Error: ${e1?.message || 'ninguno'}`;
+            
+            const { data: prods, error: e2 } = await db.from('productos').select('*');
+            out.innerHTML += `\n📦 Productos: ${prods?.length || 0} - Error: ${e2?.message || 'ninguno'}`;
+            
+            if (prods?.length > 0) {
+                out.innerHTML += `\n\n✅ Primer producto: ${JSON.stringify(prods[0])}`;
+            }
+        }
+        test();
+    </script>
+</body>
+</html>
