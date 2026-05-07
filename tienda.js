@@ -6,16 +6,25 @@ let catalogoProductos = [];
 let categoriasLista = [];
 let carrito = [];
 let filtroActual = 'todas';
+let clienteActual = null;
+let esClienteFrecuente = false;
 
 // Cargar datos al iniciar
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🛒 Iniciando catálogo de productos');
     
-    // Verificar que db existe
     if (typeof db === 'undefined') {
-        console.error('❌ db no está definido. Revisa que config.js se cargue primero.');
-        document.getElementById('catalogoContainer').innerHTML = '<div class="alert alert-danger">Error de conexión: No se pudo conectar con la base de datos.</div>';
+        console.error('❌ db no está definido');
+        document.getElementById('catalogoContainer').innerHTML = '<div class="alert alert-danger">Error de conexión</div>';
         return;
+    }
+    
+    // Buscar cliente por teléfono si ya existe en el input
+    const telefonoInput = document.getElementById('telefonoCliente');
+    if (telefonoInput) {
+        telefonoInput.addEventListener('blur', async function() {
+            await verificarClienteFrecuente(this.value);
+        });
     }
     
     await cargarCategorias();
@@ -23,7 +32,46 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     const btnRealizar = document.getElementById('btnRealizarPedido');
     if (btnRealizar) btnRealizar.onclick = realizarPedido;
+    
+    // Mostrar/ocultar dirección de envío según tipo de entrega
+    const tipoEntrega = document.getElementById('tipoEntrega');
+    if (tipoEntrega) {
+        tipoEntrega.onchange = function() {
+            const divDireccion = document.getElementById('divDireccionEnvio');
+            if (divDireccion) {
+                divDireccion.style.display = this.value === 'envio_domicilio' ? 'block' : 'none';
+            }
+        };
+    }
 });
+
+async function verificarClienteFrecuente(telefono) {
+    if (!telefono || telefono.length < 6) return;
+    
+    try {
+        const { data, error } = await db
+            .from('clientes')
+            .select('id, nombre, es_frecuente')
+            .eq('telefono', telefono)
+            .maybeSingle();
+        
+        if (error) throw error;
+        
+        if (data && data.es_frecuente === true) {
+            esClienteFrecuente = true;
+            clienteActual = data;
+            document.getElementById('divOpcionesEntrega').style.display = 'block';
+            document.getElementById('nombreCliente').value = data.nombre || '';
+            console.log('✅ Cliente frecuente detectado:', data.nombre);
+        } else {
+            esClienteFrecuente = false;
+            clienteActual = null;
+            document.getElementById('divOpcionesEntrega').style.display = 'none';
+        }
+    } catch (err) {
+        console.error('Error verificando cliente:', err);
+    }
+}
 
 async function cargarCategorias() {
     try {
@@ -33,10 +81,7 @@ async function cargarCategorias() {
             .select('*')
             .order('nombre');
         
-        if (error) {
-            console.error('Error en categorías:', error);
-            return;
-        }
+        if (error) throw error;
         
         categoriasLista = data || [];
         console.log('Categorías cargadas:', categoriasLista.length);
@@ -71,8 +116,6 @@ async function cargarProductosTienda() {
     container.innerHTML = '<div class="loading">Cargando productos...</div>';
     
     try {
-        console.log('Cargando productos, filtro:', filtroActual);
-        
         let query = db.from('productos').select('*, categorias(nombre, icono)').eq('activo', true);
         
         if (filtroActual !== 'todas') {
@@ -81,17 +124,13 @@ async function cargarProductosTienda() {
         
         const { data, error } = await query.order('nombre');
         
-        if (error) {
-            console.error('Error en productos:', error);
-            container.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
-            return;
-        }
+        if (error) throw error;
         
         catalogoProductos = data || [];
         console.log('Productos cargados:', catalogoProductos.length);
         
         if (catalogoProductos.length === 0) {
-            container.innerHTML = '<div class="card" style="text-align: center;">No hay productos disponibles en esta categoría.<br><br>⚠️ Verifica que los productos existan en la base de datos.</div>';
+            container.innerHTML = '<div class="card" style="text-align: center;">No hay productos disponibles.</div>';
             return;
         }
         
@@ -103,6 +142,26 @@ async function cargarProductosTienda() {
             
             const btnMedidas = document.getElementById(`add-medidas-${p.id}`);
             if (btnMedidas) btnMedidas.onclick = () => agregarAlCarritoConMedidas(p);
+            
+            // Eventos para campos personalizados de poleas
+            if (p.categoria_id === 1) {
+                const ejeSelect = document.getElementById(`diametroEje-${p.id}`);
+                const canalesSelect = document.getElementById(`numCanales-${p.id}`);
+                
+                if (ejeSelect) {
+                    ejeSelect.onchange = () => {
+                        const personalizado = document.getElementById(`ejePersonalizado-${p.id}`);
+                        if (personalizado) personalizado.style.display = ejeSelect.value === 'personalizado' ? 'block' : 'none';
+                    };
+                }
+                
+                if (canalesSelect) {
+                    canalesSelect.onchange = () => {
+                        const personalizado = document.getElementById(`canalesPersonalizado-${p.id}`);
+                        if (personalizado) personalizado.style.display = canalesSelect.value === 'personalizado' ? 'block' : 'none';
+                    };
+                }
+            }
         });
         
     } catch (err) {
@@ -111,58 +170,54 @@ async function cargarProductosTienda() {
     }
 }
 
-function obtenerPlaceholderEjemplo(campo) {
-    const ejemplos = {
-        'Diámetro (pulgadas)': '4"',
-        'Diámetro (pulgadas o cm)': '4 pulgadas o 10cm',
-        'Diámetro del eje (mm)': '24mm, 28mm, 16mm',
-        'Número de canales': '1, 2, 3',
-        'Tipo de correa (A/B/3V/5V)': 'A, B, 3V, 5V',
-        'Medidas especiales': 'Especificar...',
-        'Material (Aluminio/Acero)': 'Aluminio o Acero',
-        'Medidas (mm)': '50x30x20',
-        'Material': 'Aluminio / Acero / Bronce',
-        'Acabado': 'Pulido / Pintado',
-        'Peso aprox (kg)': '2.5 kg',
-        'Complejidad (baja/media/alta)': 'media',
-        'Cantidad': '5',
-        'Ancho (m)': '2.5 m',
-        'Alto (m)': '1.8 m'
-    };
-    return ejemplos[campo] || 'Ingrese valor';
-}
-
 function renderProducto(producto) {
-    const espec = producto.especificaciones || {};
-    const requiereMedidas = espec.requiere_medidas || false;
-    const camposMedida = espec.campos_medida || [];
     const categoriaId = producto.categoria_id;
-    
     let medidasHtml = '';
     
-    // Caso 1: Producto con campos de medida específicos
-    if (requiereMedidas && camposMedida.length > 0) {
-        let camposHtml = camposMedida.map(campo => `
-            <div style="margin-bottom: 8px;">
-                <label style="font-size: 0.8rem; font-weight: 500; display: block;">${campo}</label>
-                <input type="text" id="medida-${producto.id}-${campo.replace(/\s/g, '')}" 
-                       class="medida-input" 
-                       placeholder="Ej: ${obtenerPlaceholderEjemplo(campo)}" 
-                       style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.8rem;">
-            </div>
-        `).join('');
-        
+    // Caso especial: Poleas (categoría 1) - Nueva versión con selects
+    if (categoriaId === 1) {
         medidasHtml = `
-            <div class="medidas-especiales" style="background: #fff3cd; padding: 10px; border-radius: 8px; margin: 10px 0;">
-                <small style="font-weight: bold;">📏 Especificaciones requeridas:</small>
-                <div style="margin-top: 8px;">
-                    ${camposHtml}
+            <div class="medidas-especiales" style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 10px 0;">
+                <small style="font-weight: bold;">⚙️ Especificaciones de la polea:</small>
+                <div style="margin-top: 10px;">
+                    <div class="campo-medida">
+                        <label>Tipo de correa</label>
+                        <select id="tipoCorrea-${producto.id}" class="form-control" style="font-size: 0.8rem; padding: 5px;">
+                            <option value="A">Tipo A (13mm)</option>
+                            <option value="B">Tipo B (17mm)</option>
+                            <option value="3V">Tipo 3V (9.5mm)</option>
+                            <option value="5V">Tipo 5V (15.5mm)</option>
+                            <option value="personalizada">Personalizada</option>
+                        </select>
+                        <input type="text" id="correaPersonalizada-${producto.id}" placeholder="Especificar medida (mm)" style="display: none; width: 100%; margin-top: 5px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div class="campo-medida">
+                        <label>Diámetro del eje (mm)</label>
+                        <select id="diametroEje-${producto.id}" class="form-control" style="font-size: 0.8rem; padding: 5px;">
+                            <option value="16">16 mm</option>
+                            <option value="19">19 mm</option>
+                            <option value="24">24 mm</option>
+                            <option value="28">28 mm</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select>
+                        <input type="text" id="ejePersonalizado-${producto.id}" placeholder="Especificar medida (mm)" style="display: none; width: 100%; margin-top: 5px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div class="campo-medida">
+                        <label>Número de canales</label>
+                        <select id="numCanales-${producto.id}" class="form-control" style="font-size: 0.8rem; padding: 5px;">
+                            <option value="1">1 canal</option>
+                            <option value="2">2 canales</option>
+                            <option value="3">3 canales</option>
+                            <option value="personalizado">Personalizado (más de 3)</option>
+                        </select>
+                        <input type="number" id="canalesPersonalizado-${producto.id}" placeholder="Número de canales" style="display: none; width: 100%; margin-top: 5px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;" min="1">
+                    </div>
                 </div>
-                <button id="add-medidas-${producto.id}" class="btn" style="background: #28a745; padding: 6px 12px; margin-top: 10px; width: 100%;">✓ Agregar con estas medidas</button>
+                <button id="add-medidas-${producto.id}" class="btn" style="background: #28a745; padding: 8px 12px; margin-top: 12px; width: 100%;">✓ Agregar con estas especificaciones</button>
             </div>
         `;
-    } 
-    // Caso 2: Metales - Peso en kg
+    }
+    // Caso 2: Metales
     else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
         medidasHtml = `
             <div class="medidas-especiales" style="background: #e7f3ff; padding: 10px; border-radius: 8px; margin: 10px 0;">
@@ -223,34 +278,61 @@ function agregarAlCarrito(producto, cantidad = 1, especificaciones = null) {
 }
 
 function agregarAlCarritoConMedidas(producto) {
-    const espec = producto.especificaciones || {};
-    const camposMedida = espec.campos_medida || [];
     const categoriaId = producto.categoria_id;
     let especificaciones = null;
     let cantidad = 1;
     
-    // Caso 1: Producto con campos de medida específicos (poleas)
-    if (camposMedida.length > 0) {
-        const medidas = {};
-        let todasCompletas = true;
+    // Caso: Poleas (categoría 1) - Capturar todas las especificaciones
+    if (categoriaId === 1) {
+        let tipoCorrea = document.getElementById(`tipoCorrea-${producto.id}`)?.value;
+        let diametroEje = document.getElementById(`diametroEje-${producto.id}`)?.value;
+        let numCanales = document.getElementById(`numCanales-${producto.id}`)?.value;
         
-        camposMedida.forEach(campo => {
-            const inputId = `medida-${producto.id}-${campo.replace(/\s/g, '')}`;
-            const input = document.getElementById(inputId);
-            if (input && input.value.trim()) {
-                medidas[campo] = input.value.trim();
-            } else {
-                todasCompletas = false;
+        // Verificar campos personalizados para correa
+        if (tipoCorrea === 'personalizada') {
+            const correaPersonalizada = document.getElementById(`correaPersonalizada-${producto.id}`)?.value;
+            if (!correaPersonalizada) {
+                alert('⚠️ Ingresa la medida de la correa personalizada');
+                return;
             }
-        });
-        
-        if (!todasCompletas || Object.keys(medidas).length === 0) {
-            alert('⚠️ Por favor, completa todas las medidas del producto');
-            return;
+            tipoCorrea = `Personalizada: ${correaPersonalizada}mm`;
         }
-        especificaciones = { medidas: medidas };
+        
+        // Verificar eje personalizado
+        if (diametroEje === 'personalizado') {
+            const ejePersonalizado = document.getElementById(`ejePersonalizado-${producto.id}`)?.value;
+            if (!ejePersonalizado) {
+                alert('⚠️ Ingresa el diámetro del eje personalizado');
+                return;
+            }
+            diametroEje = `Personalizado: ${ejePersonalizado}mm`;
+        }
+        
+        // Verificar canales personalizados
+        if (numCanales === 'personalizado') {
+            const canalesPersonalizado = document.getElementById(`canalesPersonalizado-${producto.id}`)?.value;
+            if (!canalesPersonalizado || canalesPersonalizado < 1) {
+                alert('⚠️ Ingresa un número válido de canales');
+                return;
+            }
+            numCanales = canalesPersonalizado;
+        }
+        
+        especificaciones = {
+            tipo_correa: tipoCorrea,
+            diametro_eje_mm: diametroEje,
+            num_canales: numCanales
+        };
+        
+        // Limpiar campos personalizados
+        const correaInput = document.getElementById(`correaPersonalizada-${producto.id}`);
+        if (correaInput) correaInput.value = '';
+        const ejeInput = document.getElementById(`ejePersonalizado-${producto.id}`);
+        if (ejeInput) ejeInput.value = '';
+        const canalesInput = document.getElementById(`canalesPersonalizado-${producto.id}`);
+        if (canalesInput) canalesInput.value = '';
     }
-    // Caso 2: Metales - Peso en kg
+    // Caso: Metales (categoría 2)
     else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
         const input = document.getElementById(`medida-${producto.id}`);
         const peso = parseFloat(input?.value);
@@ -262,27 +344,12 @@ function agregarAlCarritoConMedidas(producto) {
         cantidad = peso;
         especificaciones = { peso_kg: peso };
     }
-    // Caso 3: Producto normal
-    else {
-        const input = document.getElementById(`medida-${producto.id}`);
-        const medida = input ? input.value.trim() : null;
-        if (medida) {
-            especificaciones = { especificacion: medida };
-        }
-    }
     
     agregarAlCarrito(producto, cantidad, especificaciones);
     
-    // Limpiar campos
-    if (camposMedida.length > 0) {
-        camposMedida.forEach(campo => {
-            const input = document.getElementById(`medida-${producto.id}-${campo.replace(/\s/g, '')}`);
-            if (input) input.value = '';
-        });
-    } else {
-        const input = document.getElementById(`medida-${producto.id}`);
-        if (input) input.value = '';
-    }
+    // Limpiar campos normales
+    const inputNormal = document.getElementById(`medida-${producto.id}`);
+    if (inputNormal) inputNormal.value = '';
 }
 
 function actualizarCarrito() {
@@ -304,7 +371,11 @@ function actualizarCarrito() {
         
         let especHtml = '';
         if (item.especificaciones) {
-            if (item.especificaciones.medidas) {
+            if (item.especificaciones.tipo_correa) {
+                especHtml = `<small style="color:#666;">⚙️ Correa: ${item.especificaciones.tipo_correa} | Eje: ${item.especificaciones.diametro_eje_mm}mm | Canales: ${item.especificaciones.num_canales}</small><br>`;
+            } else if (item.especificaciones.peso_kg) {
+                especHtml = `<small style="color:#666;">⚖️ ${item.especificaciones.peso_kg} kg</small><br>`;
+            } else if (item.especificaciones.medidas) {
                 const medidasObj = item.especificaciones.medidas;
                 if (typeof medidasObj === 'object') {
                     const medidasList = Object.entries(medidasObj).map(([k, v]) => `${k}: ${v}`).join(', ');
@@ -312,8 +383,6 @@ function actualizarCarrito() {
                 } else {
                     especHtml = `<small style="color:#666;">📏 ${medidasObj}</small><br>`;
                 }
-            } else if (item.especificaciones.peso_kg) {
-                especHtml = `<small style="color:#666;">⚖️ ${item.especificaciones.peso_kg} kg</small><br>`;
             } else if (item.especificaciones.especificacion) {
                 especHtml = `<small style="color:#666;">📝 ${item.especificaciones.especificacion}</small><br>`;
             }
@@ -361,6 +430,15 @@ async function realizarPedido() {
     const direccion = document.getElementById('direccionCliente')?.value.trim();
     const notas = document.getElementById('notasPedido')?.value.trim();
     
+    // Capturar opciones de entrega (si es cliente frecuente)
+    let tipoEntrega = 'retiro_taller';
+    let direccionEnvio = null;
+    
+    if (esClienteFrecuente) {
+        tipoEntrega = document.getElementById('tipoEntrega')?.value || 'retiro_taller';
+        direccionEnvio = document.getElementById('direccionEnvio')?.value.trim() || null;
+    }
+    
     if (!nombre || !telefono) {
         alert('⚠️ Por favor, ingresa el nombre y teléfono de contacto');
         return;
@@ -373,7 +451,12 @@ async function realizarPedido() {
     
     const total = carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
     
-    if (!confirm(`¿Confirmar pedido por Bs ${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\nProductos: ${carrito.length} ítems`)) {
+    let mensajeEntrega = '';
+    if (tipoEntrega === 'retiro_taller') mensajeEntrega = '📦 Retiro en taller';
+    else if (tipoEntrega === 'envio_domicilio') mensajeEntrega = `🚚 Envío a domicilio${direccionEnvio ? `\nDirección: ${direccionEnvio}` : ''}`;
+    else mensajeEntrega = '🏪 Entrega en tienda';
+    
+    if (!confirm(`¿Confirmar pedido por Bs ${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\n${mensajeEntrega}\nProductos: ${carrito.length} ítems`)) {
         return;
     }
     
@@ -389,7 +472,10 @@ async function realizarPedido() {
                 estado: 'pendiente',
                 total: total,
                 adelanto_monto: 0,
-                adelanto_confirmado: false
+                adelanto_confirmado: false,
+                tipo_entrega: tipoEntrega,
+                direccion_envio: direccionEnvio,
+                notas: notas || null
             }])
             .select();
         
@@ -402,15 +488,17 @@ async function realizarPedido() {
             let descripcionExtra = '';
             
             if (item.especificaciones) {
-                if (item.especificaciones.medidas) {
+                if (item.especificaciones.tipo_correa) {
+                    descripcionExtra = ` (Correa: ${item.especificaciones.tipo_correa}, Eje: ${item.especificaciones.diametro_eje_mm}mm, Canales: ${item.especificaciones.num_canales})`;
+                } else if (item.especificaciones.peso_kg) {
+                    descripcionExtra = ` (${item.especificaciones.peso_kg} kg)`;
+                } else if (item.especificaciones.medidas) {
                     if (typeof item.especificaciones.medidas === 'object') {
                         const medidasStr = Object.entries(item.especificaciones.medidas).map(([k, v]) => `${k}: ${v}`).join(', ');
                         descripcionExtra = ` (${medidasStr})`;
                     } else {
                         descripcionExtra = ` (${item.especificaciones.medidas})`;
                     }
-                } else if (item.especificaciones.peso_kg) {
-                    descripcionExtra = ` (${item.especificaciones.peso_kg} kg)`;
                 } else if (item.especificaciones.especificacion) {
                     descripcionExtra = ` (${item.especificaciones.especificacion})`;
                 }
@@ -432,10 +520,11 @@ async function realizarPedido() {
         
         carrito = [];
         actualizarCarrito();
-        if (document.getElementById('nombreCliente')) document.getElementById('nombreCliente').value = '';
-        if (document.getElementById('telefonoCliente')) document.getElementById('telefonoCliente').value = '';
-        if (document.getElementById('direccionCliente')) document.getElementById('direccionCliente').value = '';
-        if (document.getElementById('notasPedido')) document.getElementById('notasPedido').value = '';
+        document.getElementById('nombreCliente').value = '';
+        document.getElementById('telefonoCliente').value = '';
+        document.getElementById('direccionCliente').value = '';
+        document.getElementById('notasPedido').value = '';
+        if (document.getElementById('direccionEnvio')) document.getElementById('direccionEnvio').value = '';
         
     } catch (err) {
         console.error('Error al crear pedido:', err);
@@ -446,7 +535,7 @@ async function realizarPedido() {
 async function buscarOCrearCliente(nombre, telefono, direccion) {
     const { data: existente } = await db
         .from('clientes')
-        .select('id')
+        .select('id, es_frecuente')
         .eq('telefono', telefono)
         .maybeSingle();
     
