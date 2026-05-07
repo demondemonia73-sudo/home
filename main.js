@@ -17,12 +17,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     const consultarBtn = document.getElementById('consultarBtn');
     const nuevoPedidoBtn = document.getElementById('nuevoPedidoBtn');
     const mostrarLoginBtn = document.getElementById('mostrarLoginBtn');
+    const cerrarModalBtn = document.getElementById('cerrarModalBtn');
     
     if (loginBtn) loginBtn.onclick = login;
     if (logoutBtn) logoutBtn.onclick = logout;
     if (consultarBtn) consultarBtn.onclick = consultarPedido;
     if (nuevoPedidoBtn) nuevoPedidoBtn.onclick = mostrarNuevoPedidoForm;
     if (mostrarLoginBtn) mostrarLoginBtn.onclick = mostrarLogin;
+    if (cerrarModalBtn) cerrarModalBtn.onclick = cerrarModalLogin;
+    
+    // Cerrar modal si se clickea fuera del contenido
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.onclick = function(e) {
+            if (e.target === modal) {
+                cerrarModalLogin();
+            }
+        };
+    }
     
     // Configurar navegación por tabs
     const tabs = document.querySelectorAll('.tab-btn');
