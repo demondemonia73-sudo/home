@@ -6,13 +6,11 @@
     <title>TallerTotal Manager - Sistema Profesional</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
     
-    <!-- Librerías externas -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     
-    <!-- Estilos -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -34,6 +32,7 @@
             <button class="tab-btn" data-tab="reportes">📄 Reportes</button>
         </nav>
 
+        <!-- Panel Cliente (visible cuando NO hay sesión) -->
         <section id="clientePanel">
             <div class="card">
                 <h2>🔍 Consultar mi pedido</h2>
@@ -51,13 +50,20 @@
                 </div>
             </div>
             <div id="resultadoConsulta"></div>
+            
+            <!-- Botón para acceder al login desde el panel cliente -->
+            <div style="text-align: center; margin-top: 1rem;">
+                <button id="mostrarLoginBtn" class="btn btn-primary" style="background: #6c757d;">
+                    🔐 Soy trabajador / Admin - Iniciar sesión
+                </button>
+            </div>
         </section>
 
         <main id="tabsContent" style="display: none;"></main>
     </div>
 
-    <!-- MODAL DE LOGIN - Con clase active para que se muestre -->
-    <div id="loginModal" class="modal active">
+    <!-- Modal de Login -->
+    <div id="loginModal" class="modal">
         <div class="modal-content">
             <h2>🔐 Iniciar Sesión</h2>
             <div id="loginError" class="alert alert-danger" style="display: none;"></div>
