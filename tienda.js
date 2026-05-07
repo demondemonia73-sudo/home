@@ -10,6 +10,14 @@ let filtroActual = 'todas';
 // Cargar datos al iniciar
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🛒 Iniciando catálogo de productos');
+    
+    // Verificar que db existe
+    if (typeof db === 'undefined') {
+        console.error('❌ db no está definido. Revisa que config.js se cargue primero.');
+        document.getElementById('catalogoContainer').innerHTML = '<div class="alert alert-danger">Error de conexión: No se pudo conectar con la base de datos.</div>';
+        return;
+    }
+    
     await cargarCategorias();
     await cargarProductosTienda();
     
@@ -19,13 +27,19 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 async function cargarCategorias() {
     try {
+        console.log('Cargando categorías...');
         const { data, error } = await db
             .from('categorias')
             .select('*')
             .order('nombre');
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error en categorías:', error);
+            return;
+        }
+        
         categoriasLista = data || [];
+        console.log('Categorías cargadas:', categoriasLista.length);
         
         const filtrosContainer = document.getElementById('filtrosContainer');
         if (!filtrosContainer) return;
@@ -57,6 +71,8 @@ async function cargarProductosTienda() {
     container.innerHTML = '<div class="loading">Cargando productos...</div>';
     
     try {
+        console.log('Cargando productos, filtro:', filtroActual);
+        
         let query = db.from('productos').select('*, categorias(nombre, icono)').eq('activo', true);
         
         if (filtroActual !== 'todas') {
@@ -65,11 +81,17 @@ async function cargarProductosTienda() {
         
         const { data, error } = await query.order('nombre');
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error en productos:', error);
+            container.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            return;
+        }
+        
         catalogoProductos = data || [];
+        console.log('Productos cargados:', catalogoProductos.length);
         
         if (catalogoProductos.length === 0) {
-            container.innerHTML = '<div class="card" style="text-align: center;">No hay productos disponibles en esta categoría.</div>';
+            container.innerHTML = '<div class="card" style="text-align: center;">No hay productos disponibles en esta categoría.<br><br>⚠️ Verifica que los productos existan en la base de datos.</div>';
             return;
         }
         
@@ -91,13 +113,21 @@ async function cargarProductosTienda() {
 
 function obtenerPlaceholderEjemplo(campo) {
     const ejemplos = {
-        'Diámetro externo (pulgadas)': '4"',
-        'Diámetro del eje (mm)': '12mm',
-        'Ancho de cara (mm)': '15mm',
-        'Tipo de ranura': 'V, U, plana',
+        'Diámetro (pulgadas)': '4"',
+        'Diámetro (pulgadas o cm)': '4 pulgadas o 10cm',
+        'Diámetro del eje (mm)': '24mm, 28mm, 16mm',
+        'Número de canales': '1, 2, 3',
+        'Tipo de correa (A/B/3V/5V)': 'A, B, 3V, 5V',
+        'Medidas especiales': 'Especificar...',
+        'Material (Aluminio/Acero)': 'Aluminio o Acero',
         'Medidas (mm)': '50x30x20',
-        'Material': 'Aluminio / Acero',
-        'Acabado': 'Pulido / Pintado'
+        'Material': 'Aluminio / Acero / Bronce',
+        'Acabado': 'Pulido / Pintado',
+        'Peso aprox (kg)': '2.5 kg',
+        'Complejidad (baja/media/alta)': 'media',
+        'Cantidad': '5',
+        'Ancho (m)': '2.5 m',
+        'Alto (m)': '1.8 m'
     };
     return ejemplos[campo] || 'Ingrese valor';
 }
@@ -110,7 +140,7 @@ function renderProducto(producto) {
     
     let medidasHtml = '';
     
-    // Caso 1: Producto con campos de medida específicos (poleas)
+    // Caso 1: Producto con campos de medida específicos
     if (requiereMedidas && camposMedida.length > 0) {
         let camposHtml = camposMedida.map(campo => `
             <div style="margin-bottom: 8px;">
@@ -132,7 +162,7 @@ function renderProducto(producto) {
             </div>
         `;
     } 
-    // Caso 2: Metales (categoría 2) - Peso en kg
+    // Caso 2: Metales - Peso en kg
     else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
         medidasHtml = `
             <div class="medidas-especiales" style="background: #e7f3ff; padding: 10px; border-radius: 8px; margin: 10px 0;">
@@ -145,7 +175,7 @@ function renderProducto(producto) {
         `;
     }
     
-    const precioEnBolivianos = producto.precio_venta;
+    const precio = producto.precio_venta;
     const categoriaIcono = producto.categorias?.icono || '📁';
     const categoriaNombre = producto.categorias?.nombre || 'Sin categoría';
     
@@ -162,7 +192,7 @@ function renderProducto(producto) {
             <p style="font-size: 0.8rem; color: #666; margin-bottom: 8px;">${producto.descripcion || ''}</p>
             ${medidasHtml}
             <div class="producto-precio" style="font-size: 1.3rem; font-weight: bold; color: #28a745; margin: 8px 0;">
-                Bs ${precioEnBolivianos.toFixed(2)}
+                Bs ${precio.toFixed(2)}
             </div>
             ${stockText}
             <button id="add-${producto.id}" class="btn-carrito" style="background: #1a73e8; color: white; border: none; padding: 8px; border-radius: 6px; width: 100%; margin-top: 8px; cursor: pointer;" ${producto.stock_actual <= 0 ? 'disabled' : ''}>
@@ -189,6 +219,7 @@ function agregarAlCarrito(producto, cantidad = 1, especificaciones = null) {
     }
     
     actualizarCarrito();
+    alert(`✅ "${producto.nombre}" agregado al carrito`);
 }
 
 function agregarAlCarritoConMedidas(producto) {
@@ -219,7 +250,7 @@ function agregarAlCarritoConMedidas(producto) {
         }
         especificaciones = { medidas: medidas };
     }
-    // Caso 2: Metales (categoría 2) - Peso en kg
+    // Caso 2: Metales - Peso en kg
     else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
         const input = document.getElementById(`medida-${producto.id}`);
         const peso = parseFloat(input?.value);
@@ -231,7 +262,7 @@ function agregarAlCarritoConMedidas(producto) {
         cantidad = peso;
         especificaciones = { peso_kg: peso };
     }
-    // Caso 3: Producto normal sin medidas especiales
+    // Caso 3: Producto normal
     else {
         const input = document.getElementById(`medida-${producto.id}`);
         const medida = input ? input.value.trim() : null;
@@ -242,7 +273,7 @@ function agregarAlCarritoConMedidas(producto) {
     
     agregarAlCarrito(producto, cantidad, especificaciones);
     
-    // Limpiar campos del formulario
+    // Limpiar campos
     if (camposMedida.length > 0) {
         camposMedida.forEach(campo => {
             const input = document.getElementById(`medida-${producto.id}-${campo.replace(/\s/g, '')}`);
@@ -288,7 +319,6 @@ function actualizarCarrito() {
             }
         }
         
-        const precioUnitario = item.precio;
         const cantidadStr = (item.cantidad % 1 !== 0) ? item.cantidad.toFixed(2) : item.cantidad;
         
         return `
@@ -296,7 +326,7 @@ function actualizarCarrito() {
                 <div style="flex: 2;">
                     <strong>${item.nombre}</strong><br>
                     ${especHtml}
-                    <small>Bs ${precioUnitario.toFixed(2)} c/u</small>
+                    <small>Bs ${item.precio.toFixed(2)} c/u</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <button class="btn" style="background: #dc3545; padding: 0.2rem 0.5rem;" onclick="cambiarCantidad(${idx}, ${item.cantidad - 1})">-</button>
@@ -342,15 +372,6 @@ async function realizarPedido() {
     }
     
     const total = carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
-    
-    // Verificar disponibilidad de stock
-    for (const item of carrito) {
-        const producto = catalogoProductos.find(p => p.id === item.id);
-        if (producto && producto.stock_actual < item.cantidad && producto.stock_actual < 999) {
-            alert(`❌ Stock insuficiente para "${item.nombre}". Disponible: ${producto.stock_actual}`);
-            return;
-        }
-    }
     
     if (!confirm(`¿Confirmar pedido por Bs ${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\nProductos: ${carrito.length} ítems`)) {
         return;
@@ -407,7 +428,7 @@ async function realizarPedido() {
             }]);
         }
         
-        alert(`✅ ¡Pedido realizado con éxito!\n\nCódigo de seguimiento: ${codigo}\n\nGuarda este código para consultar el estado de tu pedido.`);
+        alert(`✅ ¡Pedido realizado con éxito!\n\n📋 Código de seguimiento: ${codigo}\n\nGuarda este código para consultar el estado de tu pedido.`);
         
         carrito = [];
         actualizarCarrito();
@@ -444,3 +465,7 @@ async function buscarOCrearCliente(nombre, telefono, direccion) {
     if (error) throw error;
     return nuevo[0].id;
 }
+
+// Exponer funciones globalmente
+window.cambiarCantidad = cambiarCantidad;
+window.eliminarDelCarrito = eliminarDelCarrito;
