@@ -47,12 +47,20 @@ async function login() {
         cerrarModalLogin();
         document.getElementById('userNameDisplay').textContent = `👋 ${AppState.currentUserName} (${AppState.currentUserRole === 'admin' ? 'Administrador' : 'Trabajador'})`;
         document.getElementById('logoutBtn').style.display = 'block';
-        document.getElementById('tabsContainer').style.display = 'flex';
         document.getElementById('clientePanel').style.display = 'none';
         document.getElementById('tabsContent').style.display = 'block';
         document.getElementById('loginDiscreto').style.display = 'none';
         
-        await cargarDashboard();
+        // Redirigir según rol
+        if (AppState.currentUserRole === 'admin') {
+            // Admin: mostrar todas las pestañas
+            document.getElementById('tabsContainer').style.display = 'flex';
+            await cargarDashboard();
+        } else {
+            // Trabajador: ocultar pestañas de admin, mostrar panel de trabajador
+            document.getElementById('tabsContainer').style.display = 'none';
+            await cargarPanelTrabajador();
+        }
         
     } catch (err) {
         errorDiv.textContent = 'Error: ' + err.message;
@@ -110,4 +118,16 @@ function verificarSesion() {
         return false;
     }
     return true;
+}
+
+// ============================================
+// VERIFICAR SI ES ADMIN
+// ============================================
+
+function esAdmin() {
+    return AppState.isLoggedIn && AppState.currentUserRole === 'admin';
+}
+
+function esTrabajador() {
+    return AppState.isLoggedIn && AppState.currentUserRole === 'trabajador';
 }
