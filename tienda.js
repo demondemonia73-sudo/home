@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     await cargarCategorias();
     await cargarProductosTienda();
     
-    document.getElementById('btnRealizarPedido').onclick = realizarPedido;
+    const btnRealizar = document.getElementById('btnRealizarPedido');
+    if (btnRealizar) btnRealizar.onclick = realizarPedido;
 });
 
 async function cargarCategorias() {
@@ -26,8 +27,9 @@ async function cargarCategorias() {
         if (error) throw error;
         categoriasLista = data || [];
         
-        // Mostrar filtros
         const filtrosContainer = document.getElementById('filtrosContainer');
+        if (!filtrosContainer) return;
+        
         filtrosContainer.innerHTML = `
             <div class="filtro-categoria ${filtroActual === 'todas' ? 'active' : ''}" data-cat="todas">📋 Todos</div>
             ${categoriasLista.map(c => `
@@ -51,10 +53,11 @@ async function cargarCategorias() {
 
 async function cargarProductosTienda() {
     const container = document.getElementById('catalogoContainer');
+    if (!container) return;
     container.innerHTML = '<div class="loading">Cargando productos...</div>';
     
     try {
-        let query = db.from('productos').select('*').eq('activo', true);
+        let query = db.from('productos').select('*, categorias(nombre, icono)').eq('activo', true);
         
         if (filtroActual !== 'todas') {
             query = query.eq('categoria_id', parseInt(filtroActual));
@@ -72,12 +75,10 @@ async function cargarProductosTienda() {
         
         container.innerHTML = catalogoProductos.map(p => renderProducto(p)).join('');
         
-        // Asignar eventos después de renderizar
         catalogoProductos.forEach(p => {
             const btn = document.getElementById(`add-${p.id}`);
             if (btn) btn.onclick = () => agregarAlCarrito(p);
             
-            // Para productos con medidas personalizadas
             const btnMedidas = document.getElementById(`add-medidas-${p.id}`);
             if (btnMedidas) btnMedidas.onclick = () => agregarAlCarritoConMedidas(p);
         });
@@ -88,35 +89,83 @@ async function cargarProductosTienda() {
     }
 }
 
+function obtenerPlaceholderEjemplo(campo) {
+    const ejemplos = {
+        'Diámetro externo (pulgadas)': '4"',
+        'Diámetro del eje (mm)': '12mm',
+        'Ancho de cara (mm)': '15mm',
+        'Tipo de ranura': 'V, U, plana',
+        'Medidas (mm)': '50x30x20',
+        'Material': 'Aluminio / Acero',
+        'Acabado': 'Pulido / Pintado'
+    };
+    return ejemplos[campo] || 'Ingrese valor';
+}
+
 function renderProducto(producto) {
     const espec = producto.especificaciones || {};
-    const requiereMedidas = producto.requiere_medidas || false;
+    const requiereMedidas = espec.requiere_medidas || false;
+    const camposMedida = espec.campos_medida || [];
+    const categoriaId = producto.categoria_id;
     
     let medidasHtml = '';
-    if (requiereMedidas) {
+    
+    // Caso 1: Producto con campos de medida específicos (poleas)
+    if (requiereMedidas && camposMedida.length > 0) {
+        let camposHtml = camposMedida.map(campo => `
+            <div style="margin-bottom: 8px;">
+                <label style="font-size: 0.8rem; font-weight: 500; display: block;">${campo}</label>
+                <input type="text" id="medida-${producto.id}-${campo.replace(/\s/g, '')}" 
+                       class="medida-input" 
+                       placeholder="Ej: ${obtenerPlaceholderEjemplo(campo)}" 
+                       style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.8rem;">
+            </div>
+        `).join('');
+        
         medidasHtml = `
-            <div class="medidas-especiales">
-                <small>📏 Producto a medida</small>
-                <div class="medidas-input">
-                    <input type="text" id="medida-${producto.id}" placeholder="Especificaciones (ej: 4 pulgadas, eje 12mm)" style="flex:2;">
-                    <button id="add-medidas-${producto.id}" class="btn" style="background: #28a745; padding: 0.3rem 0.5rem;">➕</button>
+            <div class="medidas-especiales" style="background: #fff3cd; padding: 10px; border-radius: 8px; margin: 10px 0;">
+                <small style="font-weight: bold;">📏 Especificaciones requeridas:</small>
+                <div style="margin-top: 8px;">
+                    ${camposHtml}
+                </div>
+                <button id="add-medidas-${producto.id}" class="btn" style="background: #28a745; padding: 6px 12px; margin-top: 10px; width: 100%;">✓ Agregar con estas medidas</button>
+            </div>
+        `;
+    } 
+    // Caso 2: Metales (categoría 2) - Peso en kg
+    else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
+        medidasHtml = `
+            <div class="medidas-especiales" style="background: #e7f3ff; padding: 10px; border-radius: 8px; margin: 10px 0;">
+                <label style="font-weight: bold;">⚖️ Peso (kilogramos)</label>
+                <div style="display: flex; gap: 8px; margin-top: 5px;">
+                    <input type="number" id="medida-${producto.id}" step="0.1" min="0.1" placeholder="Ej: 2.5" style="flex: 2; padding: 6px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button id="add-medidas-${producto.id}" class="btn" style="background: #28a745; padding: 6px 15px;">✓ Aplicar</button>
                 </div>
             </div>
         `;
     }
     
-    const stockText = producto.stock_actual > 0 
+    const precioEnBolivianos = producto.precio_venta;
+    const categoriaIcono = producto.categorias?.icono || '📁';
+    const categoriaNombre = producto.categorias?.nombre || 'Sin categoría';
+    
+    const stockText = (producto.stock_actual > 0 && producto.stock_actual < 999)
         ? `<span class="producto-stock">📦 Stock: ${producto.stock_actual} ${producto.unidad_medida || 'uds'}</span>`
-        : `<span class="producto-stock" style="color: red;">❌ Agotado</span>`;
+        : `<span class="producto-stock" style="color: #28a745;">✅ Siempre disponible</span>`;
     
     return `
-        <div class="producto-tarjeta">
-            <h4>${producto.nombre}</h4>
-            <p style="font-size: 0.85rem; color: #666;">${producto.descripcion || ''}</p>
+        <div class="producto-tarjeta" style="background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="badge" style="background: #e0e0e0; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem;">${categoriaIcono} ${categoriaNombre}</span>
+            </div>
+            <h4 style="margin: 5px 0; font-size: 1rem;">${producto.nombre}</h4>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 8px;">${producto.descripcion || ''}</p>
             ${medidasHtml}
-            <div class="producto-precio">$${producto.precio_venta.toFixed(2)}</div>
+            <div class="producto-precio" style="font-size: 1.3rem; font-weight: bold; color: #28a745; margin: 8px 0;">
+                Bs ${precioEnBolivianos.toFixed(2)}
+            </div>
             ${stockText}
-            <button id="add-${producto.id}" class="btn-carrito" ${producto.stock_actual <= 0 ? 'disabled' : ''}>
+            <button id="add-${producto.id}" class="btn-carrito" style="background: #1a73e8; color: white; border: none; padding: 8px; border-radius: 6px; width: 100%; margin-top: 8px; cursor: pointer;" ${producto.stock_actual <= 0 ? 'disabled' : ''}>
                 🛒 Agregar al pedido
             </button>
         </div>
@@ -143,25 +192,77 @@ function agregarAlCarrito(producto, cantidad = 1, especificaciones = null) {
 }
 
 function agregarAlCarritoConMedidas(producto) {
-    const input = document.getElementById(`medida-${producto.id}`);
-    const especificaciones = input ? input.value.trim() : null;
+    const espec = producto.especificaciones || {};
+    const camposMedida = espec.campos_medida || [];
+    const categoriaId = producto.categoria_id;
+    let especificaciones = null;
+    let cantidad = 1;
     
-    if (!especificaciones) {
-        alert('⚠️ Por favor, ingresa las medidas o especificaciones del producto');
-        return;
+    // Caso 1: Producto con campos de medida específicos (poleas)
+    if (camposMedida.length > 0) {
+        const medidas = {};
+        let todasCompletas = true;
+        
+        camposMedida.forEach(campo => {
+            const inputId = `medida-${producto.id}-${campo.replace(/\s/g, '')}`;
+            const input = document.getElementById(inputId);
+            if (input && input.value.trim()) {
+                medidas[campo] = input.value.trim();
+            } else {
+                todasCompletas = false;
+            }
+        });
+        
+        if (!todasCompletas || Object.keys(medidas).length === 0) {
+            alert('⚠️ Por favor, completa todas las medidas del producto');
+            return;
+        }
+        especificaciones = { medidas: medidas };
+    }
+    // Caso 2: Metales (categoría 2) - Peso en kg
+    else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
+        const input = document.getElementById(`medida-${producto.id}`);
+        const peso = parseFloat(input?.value);
+        
+        if (!peso || peso <= 0) {
+            alert('⚠️ Ingresa un peso válido en kilogramos');
+            return;
+        }
+        cantidad = peso;
+        especificaciones = { peso_kg: peso };
+    }
+    // Caso 3: Producto normal sin medidas especiales
+    else {
+        const input = document.getElementById(`medida-${producto.id}`);
+        const medida = input ? input.value.trim() : null;
+        if (medida) {
+            especificaciones = { especificacion: medida };
+        }
     }
     
-    agregarAlCarrito(producto, 1, { medidas: especificaciones });
-    input.value = '';
+    agregarAlCarrito(producto, cantidad, especificaciones);
+    
+    // Limpiar campos del formulario
+    if (camposMedida.length > 0) {
+        camposMedida.forEach(campo => {
+            const input = document.getElementById(`medida-${producto.id}-${campo.replace(/\s/g, '')}`);
+            if (input) input.value = '';
+        });
+    } else {
+        const input = document.getElementById(`medida-${producto.id}`);
+        if (input) input.value = '';
+    }
 }
 
 function actualizarCarrito() {
     const container = document.getElementById('carritoItems');
     const totalDiv = document.getElementById('carritoTotal');
     
+    if (!container || !totalDiv) return;
+    
     if (carrito.length === 0) {
         container.innerHTML = '<p class="text-muted">No hay productos agregados</p>';
-        totalDiv.innerHTML = 'Total: $0.00';
+        totalDiv.innerHTML = 'Total: Bs 0.00';
         return;
     }
     
@@ -173,20 +274,33 @@ function actualizarCarrito() {
         let especHtml = '';
         if (item.especificaciones) {
             if (item.especificaciones.medidas) {
-                especHtml = `<small style="color:#666;">📏 ${item.especificaciones.medidas}</small><br>`;
+                const medidasObj = item.especificaciones.medidas;
+                if (typeof medidasObj === 'object') {
+                    const medidasList = Object.entries(medidasObj).map(([k, v]) => `${k}: ${v}`).join(', ');
+                    especHtml = `<small style="color:#666;">📏 ${medidasList}</small><br>`;
+                } else {
+                    especHtml = `<small style="color:#666;">📏 ${medidasObj}</small><br>`;
+                }
+            } else if (item.especificaciones.peso_kg) {
+                especHtml = `<small style="color:#666;">⚖️ ${item.especificaciones.peso_kg} kg</small><br>`;
+            } else if (item.especificaciones.especificacion) {
+                especHtml = `<small style="color:#666;">📝 ${item.especificaciones.especificacion}</small><br>`;
             }
         }
         
+        const precioUnitario = item.precio;
+        const cantidadStr = (item.cantidad % 1 !== 0) ? item.cantidad.toFixed(2) : item.cantidad;
+        
         return `
             <div class="carrito-item">
-                <div>
+                <div style="flex: 2;">
                     <strong>${item.nombre}</strong><br>
                     ${especHtml}
-                    <small>$${item.precio.toFixed(2)} c/u</small>
+                    <small>Bs ${precioUnitario.toFixed(2)} c/u</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <button class="btn" style="background: #dc3545; padding: 0.2rem 0.5rem;" onclick="cambiarCantidad(${idx}, ${item.cantidad - 1})">-</button>
-                    <span>${item.cantidad}</span>
+                    <span style="min-width: 35px; text-align: center;">${cantidadStr}</span>
                     <button class="btn" style="background: #28a745; padding: 0.2rem 0.5rem;" onclick="cambiarCantidad(${idx}, ${item.cantidad + 1})">+</button>
                     <button class="btn" style="background: #6c757d; padding: 0.2rem 0.5rem;" onclick="eliminarDelCarrito(${idx})">🗑️</button>
                 </div>
@@ -194,7 +308,7 @@ function actualizarCarrito() {
         `;
     }).join('');
     
-    totalDiv.innerHTML = `Total: $${total.toFixed(2)}`;
+    totalDiv.innerHTML = `Total: Bs ${total.toFixed(2)}`;
 }
 
 function cambiarCantidad(idx, nuevaCantidad) {
@@ -212,10 +326,10 @@ function eliminarDelCarrito(idx) {
 }
 
 async function realizarPedido() {
-    const nombre = document.getElementById('nombreCliente').value.trim();
-    const telefono = document.getElementById('telefonoCliente').value.trim();
-    const direccion = document.getElementById('direccionCliente').value.trim();
-    const notas = document.getElementById('notasPedido').value.trim();
+    const nombre = document.getElementById('nombreCliente')?.value.trim();
+    const telefono = document.getElementById('telefonoCliente')?.value.trim();
+    const direccion = document.getElementById('direccionCliente')?.value.trim();
+    const notas = document.getElementById('notasPedido')?.value.trim();
     
     if (!nombre || !telefono) {
         alert('⚠️ Por favor, ingresa el nombre y teléfono de contacto');
@@ -232,24 +346,20 @@ async function realizarPedido() {
     // Verificar disponibilidad de stock
     for (const item of carrito) {
         const producto = catalogoProductos.find(p => p.id === item.id);
-        if (producto && producto.stock_actual < item.cantidad) {
+        if (producto && producto.stock_actual < item.cantidad && producto.stock_actual < 999) {
             alert(`❌ Stock insuficiente para "${item.nombre}". Disponible: ${producto.stock_actual}`);
             return;
         }
     }
     
-    if (!confirm(`¿Confirmar pedido por $${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\nProductos: ${carrito.length} ítems`)) {
+    if (!confirm(`¿Confirmar pedido por Bs ${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\nProductos: ${carrito.length} ítems`)) {
         return;
     }
     
     try {
-        // 1. Crear o obtener cliente
         let clienteId = await buscarOCrearCliente(nombre, telefono, direccion);
-        
-        // 2. Generar código de pedido
         const codigo = `PED-${Date.now().toString().slice(-6)}`;
         
-        // 3. Crear pedido
         const { data: pedido, error: pedidoError } = await db
             .from('pedidos')
             .insert([{
@@ -266,15 +376,30 @@ async function realizarPedido() {
         
         const pedidoId = pedido[0].id;
         
-        // 4. Crear detalles del pedido
         for (const item of carrito) {
             const espec = item.especificaciones ? JSON.stringify(item.especificaciones) : null;
+            let descripcionExtra = '';
+            
+            if (item.especificaciones) {
+                if (item.especificaciones.medidas) {
+                    if (typeof item.especificaciones.medidas === 'object') {
+                        const medidasStr = Object.entries(item.especificaciones.medidas).map(([k, v]) => `${k}: ${v}`).join(', ');
+                        descripcionExtra = ` (${medidasStr})`;
+                    } else {
+                        descripcionExtra = ` (${item.especificaciones.medidas})`;
+                    }
+                } else if (item.especificaciones.peso_kg) {
+                    descripcionExtra = ` (${item.especificaciones.peso_kg} kg)`;
+                } else if (item.especificaciones.especificacion) {
+                    descripcionExtra = ` (${item.especificaciones.especificacion})`;
+                }
+            }
             
             await db.from('detalle_pedido').insert([{
                 pedido_id: pedidoId,
                 tipo: 'producto',
                 producto_id: item.id,
-                descripcion: item.nombre + (item.especificaciones?.medidas ? ` (${item.especificaciones.medidas})` : ''),
+                descripcion: item.nombre + descripcionExtra,
                 cantidad: item.cantidad,
                 precio_unitario: item.precio,
                 subtotal: item.precio * item.cantidad,
@@ -284,13 +409,12 @@ async function realizarPedido() {
         
         alert(`✅ ¡Pedido realizado con éxito!\n\nCódigo de seguimiento: ${codigo}\n\nGuarda este código para consultar el estado de tu pedido.`);
         
-        // Limpiar carrito
         carrito = [];
         actualizarCarrito();
-        document.getElementById('nombreCliente').value = '';
-        document.getElementById('telefonoCliente').value = '';
-        document.getElementById('direccionCliente').value = '';
-        document.getElementById('notasPedido').value = '';
+        if (document.getElementById('nombreCliente')) document.getElementById('nombreCliente').value = '';
+        if (document.getElementById('telefonoCliente')) document.getElementById('telefonoCliente').value = '';
+        if (document.getElementById('direccionCliente')) document.getElementById('direccionCliente').value = '';
+        if (document.getElementById('notasPedido')) document.getElementById('notasPedido').value = '';
         
     } catch (err) {
         console.error('Error al crear pedido:', err);
@@ -299,7 +423,6 @@ async function realizarPedido() {
 }
 
 async function buscarOCrearCliente(nombre, telefono, direccion) {
-    // Buscar cliente existente
     const { data: existente } = await db
         .from('clientes')
         .select('id')
@@ -308,7 +431,6 @@ async function buscarOCrearCliente(nombre, telefono, direccion) {
     
     if (existente) return existente.id;
     
-    // Crear nuevo cliente
     const { data: nuevo, error } = await db
         .from('clientes')
         .insert([{
