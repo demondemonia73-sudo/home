@@ -75,7 +75,6 @@ async function cargarTrabajadores() {
         passwordInput.style.filter = 'blur(4px)';
     }
     
-    // Cargar áreas primero
     await cargarAreas();
     await refrescarListaTrabajadores();
 }
@@ -83,54 +82,37 @@ async function cargarTrabajadores() {
 let trabajadorEditando = null;
 
 async function cargarAreas() {
-    console.log('🔍 [cargarAreas] Iniciando...');
-    
-    // Verificar db
-    if (typeof db === 'undefined') {
-        console.error('❌ db no está definido');
-        const container = document.getElementById('areasCheckbox');
-        if (container) container.innerHTML = '<div class="alert alert-danger">Error de conexión</div>';
-        return;
-    }
+    console.log('🔍 Cargando áreas...');
     
     try {
-        // Consulta directa
-        const { data, error, status } = await db
+        const { data, error } = await db
             .from('areas')
             .select('*')
             .order('nombre');
         
-        console.log('📊 Status:', status);
-        console.log('📊 Data:', data);
-        console.log('📊 Error:', error);
-        
         if (error) {
-            console.error('❌ Error en consulta:', error);
+            console.error('Error:', error);
             throw error;
         }
         
         areasData = data || [];
-        console.log(`✅ Áreas obtenidas: ${areasData.length}`);
+        console.log('Áreas obtenidas:', areasData.length);
         
-        // Mostrar en el contenedor
         const container = document.getElementById('areasCheckbox');
         if (container) {
             if (areasData.length === 0) {
-                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Ejecuta SQL para crear áreas.</div>';
+                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas.</div>';
             } else {
                 container.innerHTML = areasData.map(area => `
                     <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer;">
                         <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
                     </label>
                 `).join('');
-                console.log('✅ Checkboxes generados');
             }
-        } else {
-            console.error('❌ Contenedor #areasCheckbox no encontrado');
         }
         
     } catch (err) {
-        console.error('❌ Error cargando áreas:', err);
+        console.error('Error:', err);
         const container = document.getElementById('areasCheckbox');
         if (container) {
             container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
@@ -345,17 +327,17 @@ async function refrescarListaTrabajadores() {
         }
         
         let html = `
-            <div class="table-container">
-                <table>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Email</th>
-                            <th>Contraseña</th>
-                            <th>Áreas</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
+                        <tr style="background: #1a73e8; color: white;">
+                            <th style="padding: 12px; text-align: left;">ID</th>
+                            <th style="padding: 12px; text-align: left;">Nombre</th>
+                            <th style="padding: 12px; text-align: left;">Email</th>
+                            <th style="padding: 12px; text-align: left;">Contraseña</th>
+                            <th style="padding: 12px; text-align: left;">Áreas</th>
+                            <th style="padding: 12px; text-align: left;">Estado</th>
+                            <th style="padding: 12px; text-align: left;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -366,26 +348,26 @@ async function refrescarListaTrabajadores() {
             const areasNombres = areas?.filter(a => areasIds.includes(a.id)).map(a => `${a.icono || '📁'} ${a.nombre}`).join(', ') || 'Sin áreas';
             
             html += `
-                <tr>
-                    <td>${t.id}</td>
-                    <td><strong>${t.nombre}</strong></td>
-                    <td>${t.email}</td>
-                    <td style="position: relative;">
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">${t.id}</td>
+                    <td style="padding: 10px;"><strong>${t.nombre}</strong></td>
+                    <td style="padding: 10px;">${t.email}</td>
+                    <td style="padding: 10px;">
                         <span id="pass-${t.id}" style="filter: blur(4px); cursor: pointer;" onclick="revelePassword(${t.id}, '${(t.password_visible || '').replace(/'/g, "\\'")}')">••••••</span>
-                        <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem; margin-left: 0.5rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
-                    </td
-                    <td><small>${areasNombres}</small></td>
-                    <td>
-                        <span class="badge" style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white;">
+                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px; margin-left: 8px;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
+                    </td>
+                    <td style="padding: 10px;"><small>${areasNombres}</small></td>
+                    <td style="padding: 10px;">
+                        <span style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;">
                             ${t.activo ? '✅ Activo' : '❌ Inactivo'}
                         </span>
                     </td>
-                    <td style="white-space: nowrap;">
-                        <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
-                        <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; color: white; padding: 0.3rem 0.6rem;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
+                    <td style="padding: 10px; white-space: nowrap;">
+                        <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
+                        <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; color: white; padding: 4px 8px; font-size: 11px;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
                             ${t.activo ? '❌ Desactivar' : '✅ Activar'}
                         </button>
-                    </td
+                    </td>
                 </tr>
             `;
         }
