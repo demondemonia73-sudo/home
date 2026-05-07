@@ -1,139 +1,241 @@
 // ============================================
-// MÓDULO DE PEDIDOS
+// MÓDULO DE PEDIDOS (ADMIN)
 // ============================================
 
-// Elimino la función mostrarLogin duplicada y uso la de auth.js
-// Las demás funciones quedan igual
-
-async function consultarPedido() {
-    const codigo = document.getElementById('consultaCodigo').value.trim();
-    const telefono = document.getElementById('consultaTelefono').value.trim();
-    const resultadoDiv = document.getElementById('resultadoConsulta');
-    
-    if (!codigo || !telefono) {
-        resultadoDiv.innerHTML = '<div class="alert alert-danger">Por favor, ingresa el código y tu número de teléfono</div>';
-        return;
-    }
-    
-    try {
-        const { data: pedido, error } = await db
-            .from('pedidos')
-            .select('*, clientes(*)')
-            .eq('codigo', codigo)
-            .maybeSingle();
-        
-        if (error || !pedido) {
-            resultadoDiv.innerHTML = '<div class="alert alert-danger">Pedido no encontrado. Verifica el código ingresado.</div>';
-            return;
-        }
-        
-        if (pedido.clientes?.telefono !== telefono) {
-            resultadoDiv.innerHTML = '<div class="alert alert-danger">El número de teléfono no coincide con el registro del pedido.</div>';
-            return;
-        }
-        
-        const estadoText = {
-            'pendiente': '⏳ Pendiente - Esperando asignación',
-            'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
-            'terminado': '✅ Terminado - Listo para retirar',
-            'entregado': '📦 Entregado'
-        };
-        
-        resultadoDiv.innerHTML = `
-            <div class="card" style="margin-top: 1rem; border-left: 4px solid var(--primary-color);">
-                <h3>📄 Pedido ${pedido.codigo}</h3>
-                <div style="display: grid; gap: 0.5rem;">
-                    <p><strong>👤 Cliente:</strong> ${pedido.clientes.nombre}</p>
-                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                    <p><strong>📌 Estado:</strong> <span class="badge badge-${pedido.estado}">${estadoText[pedido.estado] || pedido.estado}</span></p>
-                    <p><strong>💰 Total:</strong> <strong style="color: var(--success-color);">$${pedido.total}</strong></p>
-                    ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
-                </div>
-            </div>
-        `;
-        
-    } catch (err) {
-        resultadoDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
-    }
-}
-
-function mostrarNuevoPedidoForm() {
-    alert('📝 Formulario de nuevo pedido en desarrollo.\nPróximamente podrás realizar pedidos directamente desde aquí.');
-}
-
-// ============================================
-// MÓDULOS DE ADMIN/TRABAJADOR (con verificación de sesión)
-// ============================================
-
-function verificarSesion() {
-    if (!AppState.isLoggedIn) {
-        alert('⚠️ Debes iniciar sesión para acceder a esta sección.');
-        mostrarLogin();
-        return false;
-    }
-    return true;
-}
+let pedidosData = [];
+let filtroEstado = 'todos';
 
 async function cargarPedidos() {
     if (!verificarSesion()) return;
-    document.getElementById('tabsContent').innerHTML = `
+    
+    const tabsContent = document.getElementById('tabsContent');
+    tabsContent.innerHTML = `
         <div class="card">
-            <h3>📦 Módulo de Gestión de Pedidos</h3>
-            <p>Aquí podrás gestionar todos los pedidos del taller.</p>
-            <p class="text-muted">Funcionalidades: crear, editar, eliminar y dar seguimiento a pedidos.</p>
-            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Nuevo Pedido</button>
-        </div>
-    `;
-}
-
-async function cargarProductos() {
-    if (!verificarSesion()) return;
-    document.getElementById('tabsContent').innerHTML = `
-        <div class="card">
-            <h3>🛒 Módulo de Inventario</h3>
-            <p>Gestión completa de productos y stock.</p>
-            <p class="text-muted">Productos: lingotes, poleas, componentes, repuestos.</p>
-            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Agregar Producto</button>
-        </div>
-    `;
-}
-
-async function cargarClientes() {
-    if (!verificarSesion()) return;
-    document.getElementById('tabsContent').innerHTML = `
-        <div class="card">
-            <h3>👥 Módulo de Clientes</h3>
-            <p>Gestión de clientes frecuentes (tiendas) y clientes ocasionales.</p>
-            <p class="text-muted">Historial de compras, pedidos personalizados, etc.</p>
-            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Nuevo Cliente</button>
-        </div>
-    `;
-}
-
-async function cargarTrabajadores() {
-    if (!verificarSesion()) return;
-    document.getElementById('tabsContent').innerHTML = `
-        <div class="card">
-            <h3>👨‍🔧 Módulo de Trabajadores</h3>
-            <p>Gestión de empleados, áreas de trabajo y asignaciones.</p>
-            <p class="text-muted">Áreas: Fundición, Torneado, Electricidad, Electrónica, Software, Reparación general, Soldadura.</p>
-            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Agregar Trabajador</button>
-        </div>
-    `;
-}
-
-async function cargarReportes() {
-    if (!verificarSesion()) return;
-    document.getElementById('tabsContent').innerHTML = `
-        <div class="card">
-            <h3>📄 Módulo de Reportes</h3>
-            <p>Generación de reportes profesionales en PDF.</p>
-            <p class="text-muted">Reportes: ganancias mensuales, pedidos pendientes, productos más vendidos, etc.</p>
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="alert('En desarrollo')">📊 Reporte de Ventas</button>
-                <button class="btn btn-success" onclick="alert('En desarrollo')">📦 Reporte de Inventario</button>
-                <button class="btn btn-info" onclick="alert('En desarrollo')">👥 Reporte de Clientes</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0;">📦 Gestión de Pedidos</h2>
+                <button id="btnRefrescarPedidos" class="btn btn-primary">🔄 Refrescar</button>
+            </div>
+            
+            <!-- Filtros -->
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <strong>📌 Filtrar por estado:</strong>
+                <button id="filtroTodos" class="btn-filtro-pedido" data-estado="todos" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: none; cursor: pointer; background: #1a73e8; color: white;">Todos</button>
+                <button id="filtroPendiente" class="btn-filtro-pedido" data-estado="pendiente" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">⏳ Pendientes</button>
+                <button id="filtroProceso" class="btn-filtro-pedido" data-estado="en_proceso" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">⚙️ En proceso</button>
+                <button id="filtroTerminado" class="btn-filtro-pedido" data-estado="terminado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">✅ Terminados</button>
+                <button id="filtroEntregado" class="btn-filtro-pedido" data-estado="entregado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">📦 Entregados</button>
+            </div>
+            
+            <!-- Lista de pedidos -->
+            <div id="listaPedidos">
+                <div class="loading">Cargando pedidos...</div>
             </div>
         </div>
     `;
+    
+    // Asignar eventos de filtros
+    document.getElementById('filtroTodos').onclick = () => aplicarFiltro('todos');
+    document.getElementById('filtroPendiente').onclick = () => aplicarFiltro('pendiente');
+    document.getElementById('filtroProceso').onclick = () => aplicarFiltro('en_proceso');
+    document.getElementById('filtroTerminado').onclick = () => aplicarFiltro('terminado');
+    document.getElementById('filtroEntregado').onclick = () => aplicarFiltro('entregado');
+    document.getElementById('btnRefrescarPedidos').onclick = () => refrescarListaPedidos();
+    
+    await refrescarListaPedidos();
+}
+
+function aplicarFiltro(estado) {
+    filtroEstado = estado;
+    
+    // Actualizar estilos
+    document.querySelectorAll('.btn-filtro-pedido').forEach(btn => {
+        btn.style.background = '#f0f0f0';
+        btn.style.color = '#333';
+        btn.style.border = '1px solid #ddd';
+    });
+    
+    const btnActivo = document.getElementById(`filtro${estado === 'todos' ? 'Todos' : estado === 'en_proceso' ? 'Proceso' : estado.charAt(0).toUpperCase() + estado.slice(1)}`);
+    if (btnActivo) {
+        btnActivo.style.background = '#1a73e8';
+        btnActivo.style.color = 'white';
+        btnActivo.style.border = 'none';
+    }
+    
+    refrescarListaPedidos();
+}
+
+async function refrescarListaPedidos() {
+    const listaDiv = document.getElementById('listaPedidos');
+    listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
+    
+    try {
+        let query = db
+            .from('pedidos')
+            .select('*, clientes(nombre, telefono, direccion)')
+            .order('created_at', { ascending: false });
+        
+        if (filtroEstado !== 'todos') {
+            query = query.eq('estado', filtroEstado);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        pedidosData = data || [];
+        
+        if (pedidosData.length === 0) {
+            listaDiv.innerHTML = '<div class="alert alert-info" style="text-align: center;">No hay pedidos registrados</div>';
+            return;
+        }
+        
+        let html = `
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Cliente</th>
+                            <th>Teléfono</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Adelanto</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        for (const p of pedidosData) {
+            // Obtener detalles del pedido
+            const { data: detalles } = await db
+                .from('detalle_pedido')
+                .select('*')
+                .eq('pedido_id', p.id);
+            
+            const estadoOptions = {
+                'pendiente': '⏳ Pendiente',
+                'en_proceso': '⚙️ En proceso',
+                'terminado': '✅ Terminado',
+                'entregado': '📦 Entregado'
+            };
+            
+            html += `
+                <tr>
+                    <td><strong>${p.codigo}</strong></td>
+                    <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
+                    <td>${p.clientes?.telefono || 'N/A'}</td>
+                    <td><strong style="color: #28a745;">$${p.total.toFixed(2)}</strong></td>
+                    <td>
+                        <select id="estado-${p.id}" class="form-control" style="width: 130px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
+                            <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                            <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
+                            <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
+                            <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
+                        </select>
+                    </td>
+                    <td>
+                        ${p.adelanto_monto > 0 ? `<span style="color: #17a2b8;">$${p.adelanto_monto}</span><br>
+                        <small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}
+                    </td>
+                    <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                    <td>
+                        <button class="btn" style="background: #17a2b8; padding: 0.3rem 0.6rem;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
+                        ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
+                    </td>
+                </tr>
+                <tr style="background: #f9f9f9;">
+                    <td colspan="8">
+                        <details>
+                            <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
+                            <div style="margin-top: 0.5rem; padding-left: 1rem;">
+                                ${detalles?.map(d => `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee;">
+                                        <span>${d.cantidad} x ${d.descripcion}</span>
+                                        <span style="color: #28a745;">$${d.subtotal.toFixed(2)}</span>
+                                    </div>
+                                `).join('') || '<span>Sin productos</span>'}
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        listaDiv.innerHTML = html;
+        
+    } catch (err) {
+        console.error('Error cargando pedidos:', err);
+        listaDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+}
+
+async function cambiarEstadoPedido(id, nuevoEstado) {
+    try {
+        const { error } = await db
+            .from('pedidos')
+            .update({ estado: nuevoEstado })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        // Si el estado es terminado, registrar fecha
+        if (nuevoEstado === 'terminado') {
+            await db.from('pedidos').update({ fecha_terminado: new Date() }).eq('id', id);
+        }
+        
+        alert('✅ Estado actualizado');
+        await refrescarListaPedidos();
+        
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
+
+async function verDetallePedido(id) {
+    const { data: pedido, error } = await db
+        .from('pedidos')
+        .select('*, clientes(*)')
+        .eq('id', id)
+        .single();
+    
+    if (error) {
+        alert('Error al cargar detalle');
+        return;
+    }
+    
+    const { data: detalles } = await db
+        .from('detalle_pedido')
+        .select('*')
+        .eq('pedido_id', id);
+    
+    let detallesHtml = detalles?.map(d => `
+        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+            <span>${d.cantidad} x ${d.descripcion}</span>
+            <span style="color: #28a745;">$${d.subtotal.toFixed(2)}</span>
+        </div>
+    `).join('') || '<p>Sin productos</p>';
+    
+    alert(`
+📄 PEDIDO ${pedido.codigo}
+━━━━━━━━━━━━━━━━━━━━━━
+Cliente: ${pedido.clientes?.nombre}
+Teléfono: ${pedido.clientes?.telefono}
+Estado: ${pedido.estado}
+Total: $${pedido.total}
+━━━━━━━━━━━━━━━━━━━━━━
+Productos:
+${detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = $${d.subtotal}`).join('\n')}
+    `);
+}
+
+function generarPDFPedido(id) {
+    alert(`📄 Generando PDF del pedido #${id}...\n(Funcionalidad en desarrollo)`);
 }
