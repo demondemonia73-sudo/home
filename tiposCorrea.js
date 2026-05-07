@@ -8,6 +8,8 @@ async function cargarTiposCorrea() {
     if (!verificarSesion()) return;
     
     const tabsContent = document.getElementById('tabsContent');
+    if (!tabsContent) return;
+    
     tabsContent.innerHTML = `
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
@@ -15,16 +17,15 @@ async function cargarTiposCorrea() {
                 <button id="btnAgregarTipoCorrea" class="btn btn-success">➕ Nuevo Tipo</button>
             </div>
             
-            <!-- Formulario para nuevo tipo -->
             <div id="formTipoCorrea" style="display: none; background: #f8f9fa; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
                 <h3 id="formTitulo">📝 Nuevo Tipo de Correa</h3>
                 <div class="form-group">
                     <label>Nombre *</label>
-                    <input type="text" id="tipoNombre" class="form-control" placeholder="Ej: C, SPZ, A (13mm)">
+                    <input type="text" id="tipoNombre" class="form-control" placeholder="Ej: C, SPZ">
                 </div>
                 <div class="form-group">
                     <label>Medida (mm) *</label>
-                    <input type="number" id="tipoMedida" class="form-control" step="0.1" placeholder="Ej: 13.0">
+                    <input type="number" id="tipoMedida" class="form-control" step="0.1" placeholder="Ej: 22.0">
                 </div>
                 <div class="form-group">
                     <label>Descripción</label>
@@ -36,51 +37,67 @@ async function cargarTiposCorrea() {
                 </div>
             </div>
             
-            <!-- Lista de tipos -->
             <div id="listaTiposCorrea">
-                <div class="loading">Cargando tipos de correa...</div>
+                <div class="loading">Cargando...</div>
             </div>
         </div>
     `;
     
-    document.getElementById('btnAgregarTipoCorrea').onclick = mostrarFormularioNuevo;
-    document.getElementById('btnGuardarTipoCorrea').onclick = guardarTipoCorrea;
-    document.getElementById('btnCancelarTipoCorrea').onclick = ocultarFormulario;
+    const btnAgregar = document.getElementById('btnAgregarTipoCorrea');
+    const btnGuardar = document.getElementById('btnGuardarTipoCorrea');
+    const btnCancelar = document.getElementById('btnCancelarTipoCorrea');
+    
+    if (btnAgregar) btnAgregar.onclick = () => mostrarFormularioNuevoTipo();
+    if (btnGuardar) btnGuardar.onclick = () => guardarTipoCorrea();
+    if (btnCancelar) btnCancelar.onclick = () => ocultarFormularioTipo();
     
     await refrescarListaTiposCorrea();
 }
 
 let tipoCorreaEditando = null;
 
-function mostrarFormularioNuevo() {
+function mostrarFormularioNuevoTipo() {
     tipoCorreaEditando = null;
-    document.getElementById('formTitulo').textContent = '📝 Nuevo Tipo de Correa';
-    document.getElementById('tipoNombre').value = '';
-    document.getElementById('tipoMedida').value = '';
-    document.getElementById('tipoDescripcion').value = '';
-    document.getElementById('formTipoCorrea').style.display = 'block';
-    document.getElementById('tipoNombre').focus();
+    const formTitulo = document.getElementById('formTitulo');
+    const tipoNombre = document.getElementById('tipoNombre');
+    const tipoMedida = document.getElementById('tipoMedida');
+    const tipoDescripcion = document.getElementById('tipoDescripcion');
+    const formTipo = document.getElementById('formTipoCorrea');
+    
+    if (formTitulo) formTitulo.textContent = '📝 Nuevo Tipo de Correa';
+    if (tipoNombre) tipoNombre.value = '';
+    if (tipoMedida) tipoMedida.value = '';
+    if (tipoDescripcion) tipoDescripcion.value = '';
+    if (formTipo) formTipo.style.display = 'block';
+    if (tipoNombre) tipoNombre.focus();
 }
 
 function editarTipoCorrea(tipo) {
     tipoCorreaEditando = tipo;
-    document.getElementById('formTitulo').textContent = `✏️ Editando: ${tipo.nombre}`;
-    document.getElementById('tipoNombre').value = tipo.nombre;
-    document.getElementById('tipoMedida').value = tipo.medida_mm;
-    document.getElementById('tipoDescripcion').value = tipo.descripcion || '';
-    document.getElementById('formTipoCorrea').style.display = 'block';
-    document.getElementById('tipoNombre').focus();
+    const formTitulo = document.getElementById('formTitulo');
+    const tipoNombre = document.getElementById('tipoNombre');
+    const tipoMedida = document.getElementById('tipoMedida');
+    const tipoDescripcion = document.getElementById('tipoDescripcion');
+    const formTipo = document.getElementById('formTipoCorrea');
+    
+    if (formTitulo) formTitulo.textContent = `✏️ Editando: ${tipo.nombre}`;
+    if (tipoNombre) tipoNombre.value = tipo.nombre;
+    if (tipoMedida) tipoMedida.value = tipo.medida_mm;
+    if (tipoDescripcion) tipoDescripcion.value = tipo.descripcion || '';
+    if (formTipo) formTipo.style.display = 'block';
+    if (tipoNombre) tipoNombre.focus();
 }
 
-function ocultarFormulario() {
-    document.getElementById('formTipoCorrea').style.display = 'none';
+function ocultarFormularioTipo() {
+    const formTipo = document.getElementById('formTipoCorrea');
+    if (formTipo) formTipo.style.display = 'none';
     tipoCorreaEditando = null;
 }
 
 async function guardarTipoCorrea() {
-    const nombre = document.getElementById('tipoNombre').value.trim();
-    const medida = parseFloat(document.getElementById('tipoMedida').value);
-    const descripcion = document.getElementById('tipoDescripcion').value.trim();
+    const nombre = document.getElementById('tipoNombre')?.value.trim();
+    const medida = parseFloat(document.getElementById('tipoMedida')?.value);
+    const descripcion = document.getElementById('tipoDescripcion')?.value.trim();
     
     if (!nombre) {
         alert('⚠️ El nombre es obligatorio');
@@ -113,7 +130,7 @@ async function guardarTipoCorrea() {
             if (error) throw error;
             alert('✅ Tipo de correa creado');
         }
-        ocultarFormulario();
+        ocultarFormularioTipo();
         await refrescarListaTiposCorrea();
     } catch (err) {
         alert('❌ Error: ' + err.message);
@@ -138,6 +155,7 @@ async function eliminarTipoCorrea(id, nombre) {
 
 async function refrescarListaTiposCorrea() {
     const listaDiv = document.getElementById('listaTiposCorrea');
+    if (!listaDiv) return;
     listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
     
     try {
@@ -174,19 +192,19 @@ async function refrescarListaTiposCorrea() {
         tiposCorreaData.forEach(t => {
             html += `
                 <tr>
-                    <td>${t.id}</td>
+                    <td>${t.id}</td
                     <td><strong>${t.nombre}</strong></td>
-                    <td>${t.medida_mm} mm</td>
-                    <td>${t.descripcion || ''}</td>
+                    <td>${t.medida_mm} mm</td
+                    <td>${t.descripcion || ''}</td
                     <td>
                         <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem;" onclick='editarTipoCorrea(${JSON.stringify(t).replace(/'/g, "&apos;")})'>✏️ Editar</button>
                         <button class="btn btn-danger" style="padding: 0.3rem 0.6rem;" onclick="eliminarTipoCorrea(${t.id}, '${t.nombre}')">🗑️ Eliminar</button>
-                    </td>
+                    </td
                 </tr>
             `;
         });
         
-        html += `</tbody></table></div>`;
+        html += `</tbody>;</div>`;
         listaDiv.innerHTML = html;
         
     } catch (err) {
@@ -194,5 +212,7 @@ async function refrescarListaTiposCorrea() {
     }
 }
 
+// Exponer funciones globalmente
 window.editarTipoCorrea = editarTipoCorrea;
 window.eliminarTipoCorrea = eliminarTipoCorrea;
+window.cargarTiposCorrea = cargarTiposCorrea;
