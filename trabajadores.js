@@ -29,13 +29,16 @@ async function cargarTrabajadores() {
                 </div>
                 <div class="form-group">
                     <label>Contraseña *</label>
-                    <input type="text" id="trabajadorPassword" class="form-control" placeholder="Contraseña">
-                    <small class="text-muted">Puedes modificarla cuando el trabajador lo solicite</small>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña" style="flex: 1;">
+                        <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️ Mostrar</button>
+                    </div>
+                    <small class="text-muted">Mantén clic en "Mostrar" para ver la contraseña</small>
                 </div>
                 <div class="form-group">
                     <label>Áreas de trabajo</label>
                     <div id="areasCheckbox" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
-                        <!-- Se llenará dinámicamente -->
+                        <div class="loading">Cargando áreas...</div>
                     </div>
                 </div>
                 <div class="button-group">
@@ -56,6 +59,27 @@ async function cargarTrabajadores() {
     document.getElementById('btnGuardarTrabajador').onclick = guardarTrabajador;
     document.getElementById('btnCancelarTrabajador').onclick = ocultarFormulario;
     
+    // Evento para mostrar/ocultar contraseña
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('trabajadorPassword');
+    if (toggleBtn && passwordInput) {
+        let timeout;
+        toggleBtn.onmousedown = () => {
+            passwordInput.type = 'text';
+            timeout = setTimeout(() => {
+                passwordInput.type = 'password';
+            }, 2000);
+        };
+        toggleBtn.onmouseup = () => {
+            clearTimeout(timeout);
+            passwordInput.type = 'password';
+        };
+        toggleBtn.onmouseleave = () => {
+            clearTimeout(timeout);
+            passwordInput.type = 'password';
+        };
+    }
+    
     // Cargar áreas y trabajadores
     await cargarAreas();
     await refrescarListaTrabajadores();
@@ -73,18 +97,25 @@ async function cargarAreas() {
         if (error) throw error;
         areasData = data || [];
         
-        // Llenar checkboxes en el formulario
         const container = document.getElementById('areasCheckbox');
-        if (container && areasData.length > 0) {
-            container.innerHTML = areasData.map(area => `
-                <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px;">
-                    <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
-                </label>
-            `).join('');
+        if (container) {
+            if (areasData.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Crea áreas primero en la base de datos.</div>';
+            } else {
+                container.innerHTML = areasData.map(area => `
+                    <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px;">
+                        <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
+                    </label>
+                `).join('');
+            }
         }
         
     } catch (err) {
         console.error('Error cargando áreas:', err);
+        const container = document.getElementById('areasCheckbox');
+        if (container) {
+            container.innerHTML = `<div class="alert alert-danger">Error cargando áreas: ${err.message}</div>`;
+        }
     }
 }
 
@@ -94,6 +125,7 @@ function mostrarFormularioNuevo() {
     document.getElementById('trabajadorNombre').value = '';
     document.getElementById('trabajadorEmail').value = '';
     document.getElementById('trabajadorPassword').value = '';
+    
     // Limpiar checkboxes
     document.querySelectorAll('.area-checkbox').forEach(cb => cb.checked = false);
     document.getElementById('formTrabajador').style.display = 'block';
@@ -257,7 +289,6 @@ async function refrescarListaTrabajadores() {
     listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
     
     try {
-        // Obtener trabajadores
         const { data: trabajadores, error } = await db
             .from('usuarios')
             .select('*')
@@ -266,14 +297,13 @@ async function refrescarListaTrabajadores() {
         
         if (error) throw error;
         
-        // Obtener áreas de cada trabajador
         const { data: usuarioAreas } = await db.from('usuario_areas').select('*');
         const { data: areas } = await db.from('areas').select('*');
         
         trabajadoresData = trabajadores || [];
         
         if (trabajadoresData.length === 0) {
-            listaDiv.innerHTML = '<div class="alert alert-info" style="text-align: center;">No hay trabajadores registrados</div>';
+            listaDiv.innerHTML = '<div class="alert alert-info" style="text-align: center;">No hay trabajadores registrados. Haz clic en "➕ Nuevo Trabajador" para comenzar.</div>';
             return;
         }
         
@@ -295,16 +325,18 @@ async function refrescarListaTrabajadores() {
         `;
         
         for (const t of trabajadoresData) {
-            // Obtener áreas del trabajador
             const areasIds = usuarioAreas?.filter(ua => ua.usuario_id === t.id).map(ua => ua.area_id) || [];
             const areasNombres = areas?.filter(a => areasIds.includes(a.id)).map(a => `${a.icono || '📁'} ${a.nombre}`).join(', ') || 'Sin áreas';
+            
+            // Contraseña oculta con asteriscos
+            const passwordMostrar = t.password_visible ? '••••••' : '••••••';
             
             html += `
                 <tr>
                     <td>${t.id}</td>
                     <td><strong>${t.nombre}</strong></td>
                     <td>${t.email}</td>
-                    <td><code>${t.password_visible || '••••••'}</code></td>
+                    <td><code>${passwordMostrar}</code> <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑</button></td>
                     <td><small>${areasNombres}</small></td>
                     <td>
                         <span class="badge" style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white;">
@@ -314,7 +346,6 @@ async function refrescarListaTrabajadores() {
                     <td>
                         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                             <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
-                            <button class="btn" style="background: #17a2b8; padding: 0.3rem 0.6rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Reset Password</button>
                             <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; padding: 0.3rem 0.6rem;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
                                 ${t.activo ? '❌ Desactivar' : '✅ Activar'}
                             </button>
@@ -337,3 +368,4 @@ async function refrescarListaTrabajadores() {
 window.editarTrabajador = editarTrabajador;
 window.toggleActivoTrabajador = toggleActivoTrabajador;
 window.resetearPassword = resetearPassword;
+window.cargarTrabajadores = cargarTrabajadores;
