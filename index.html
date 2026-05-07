@@ -2,60 +2,31 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>TallerTotal Manager - Sistema de Gestión</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TallerTotal Manager</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Librerías externas -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #1a73e8, #0d47a1); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
-        .header h1 { font-size: 1.5rem; }
-        .user-info { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .btn-logout { background: #dc3545; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; }
-        .btn-logout:hover { background: #c82333; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab-btn { background: #e0e0e0; border: none; padding: 12px 24px; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold; transition: all 0.3s; }
-        .tab-btn.active { background: #1a73e8; color: white; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-        button { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.3s; }
-        button:hover { background: #1557b0; }
-        button.success { background: #28a745; }
-        .table-container { overflow-x: auto; margin-top: 15px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #1a73e8; color: white; }
-        tr:nth-child(even) { background: #f9f9f9; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; }
-        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-pendiente { background: #ffc107; color: #333; }
-        .badge-proceso { background: #17a2b8; color: white; }
-        .badge-terminado { background: #28a745; color: white; }
-        .alert { padding: 12px; border-radius: 6px; margin-bottom: 15px; }
-        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        @media (max-width: 768px) { .header { flex-direction: column; text-align: center; } .tab-btn { flex: 1; text-align: center; } }
-    </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
             <h1>🔧 TallerTotal Manager</h1>
-            <div class="user-info" id="userInfo">
+            <div class="user-info">
                 <span id="userNameDisplay"></span>
-                <button class="btn-logout" onclick="logout()" style="display: none;">Cerrar Sesión</button>
+                <button id="logoutBtn" class="btn-logout" style="display: none;">Cerrar Sesión</button>
             </div>
         </div>
 
+        <!-- Pestañas (solo visibles en sesión) -->
         <div class="tabs" id="tabsContainer" style="display: none;">
             <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
             <button class="tab-btn" data-tab="pedidos">📦 Pedidos</button>
@@ -65,26 +36,29 @@
             <button class="tab-btn" data-tab="reportes">📄 Reportes</button>
         </div>
 
+        <!-- Panel Cliente (sin login) -->
         <div id="clientePanel">
             <div class="card">
                 <h3>🔍 Consultar mi pedido</h3>
                 <div class="form-group">
-                    <label>Código de pedido (ej: PED-0001)</label>
-                    <input type="text" id="consultaCodigo" placeholder="PED-0001">
+                    <label>Código de pedido</label>
+                    <input type="text" id="consultaCodigo" placeholder="Ej: PED-0001">
                 </div>
                 <div class="form-group">
                     <label>Tu número de teléfono</label>
                     <input type="text" id="consultaTelefono" placeholder="0987654321">
                 </div>
-                <button onclick="consultarPedido()">Consultar</button>
-                <button onclick="mostrarNuevoPedidoForm()" class="success">➕ Hacer nuevo pedido</button>
+                <button id="consultarBtn">Consultar</button>
+                <button id="nuevoPedidoBtn" class="success">➕ Hacer nuevo pedido</button>
             </div>
-            <div id="resultadoConsulta" style="margin-top: 20px;"></div>
+            <div id="resultadoConsulta"></div>
         </div>
 
+        <!-- Contenido dinámico (dashboard, etc.) -->
         <div id="tabsContent" style="display: none;"></div>
     </div>
 
+    <!-- Modal de Login -->
     <div id="loginModal" class="modal active">
         <div class="modal-content">
             <h2>🔐 Iniciar Sesión</h2>
@@ -97,303 +71,13 @@
                 <label>Contraseña</label>
                 <input type="password" id="loginPassword" placeholder="admin123">
             </div>
-            <button onclick="login()" style="width: 100%;">Ingresar</button>
-            <hr style="margin: 15px 0;">
-            <p style="text-align: center; font-size: 12px; color: #666;">¿Eres cliente? Usa el código de tu pedido arriba</p>
+            <button id="loginBtn">Ingresar</button>
+            <hr>
+            <p class="text-center">¿Eres cliente? Usa el código de tu pedido arriba</p>
         </div>
     </div>
 
-    <script>
-        // =====================================================
-        // CONFIGURACIÓN DE SUPABASE (ACTUALIZADA)
-        // =====================================================
-        const SUPABASE_URL = 'https://iyanyiihgjnnlcjapnge.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_gxx8Bo4xtnPcCHWTooE3fA_yE9j1cIz';
-        
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false
-            }
-        });
-        
-        let currentUser = null;
-        let currentUserRole = null;
-        let currentUserName = null;
-
-        // =====================================================
-        // VERIFICAR CONEXIÓN AL INICIO
-        // =====================================================
-        async function verificarConexion() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('usuarios')
-                    .select('count', { count: 'exact', head: true });
-                
-                if (error) {
-                    console.error('❌ Error de conexión:', error);
-                    return false;
-                }
-                console.log('✅ Conexión con Supabase exitosa');
-                return true;
-            } catch (e) {
-                console.error('❌ No se pudo conectar a Supabase:', e.message);
-                return false;
-            }
-        }
-
-        // =====================================================
-        // AUTENTICACIÓN
-        // =====================================================
-        async function login() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            const errorDiv = document.getElementById('loginError');
-            
-            errorDiv.style.display = 'none';
-            
-            if (!email || !password) {
-                errorDiv.textContent = 'Ingresa email y contraseña';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            // Verificar conexión primero
-            const conectado = await verificarConexion();
-            if (!conectado) {
-                errorDiv.textContent = 'Error de conexión con Supabase. Revisa tu URL y API Key.';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            try {
-                const { data, error } = await supabaseClient
-                    .from('usuarios')
-                    .select('*')
-                    .eq('email', email)
-                    .eq('activo', true)
-                    .maybeSingle();
-                
-                if (error) {
-                    console.error('Error en consulta:', error);
-                    errorDiv.textContent = 'Error al consultar usuario: ' + error.message;
-                    errorDiv.style.display = 'block';
-                    return;
-                }
-                
-                if (!data) {
-                    errorDiv.textContent = 'Usuario no encontrado';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
-                
-                if (data.password_hash !== password) {
-                    errorDiv.textContent = 'Contraseña incorrecta';
-                    errorDiv.style.display = 'block';
-                    return;
-                }
-                
-                // Login exitoso
-                currentUser = data;
-                currentUserRole = data.rol;
-                currentUserName = data.nombre;
-                
-                document.getElementById('loginModal').classList.remove('active');
-                document.getElementById('userNameDisplay').textContent = `👋 ${currentUserName} (${currentUserRole === 'admin' ? 'Administrador' : 'Trabajador'})`;
-                document.querySelector('.btn-logout').style.display = 'block';
-                document.getElementById('tabsContainer').style.display = 'flex';
-                document.getElementById('clientePanel').style.display = 'none';
-                document.getElementById('tabsContent').style.display = 'block';
-                
-                cargarDashboard();
-            } catch (err) {
-                console.error('Error inesperado:', err);
-                errorDiv.textContent = 'Error inesperado: ' + err.message;
-                errorDiv.style.display = 'block';
-            }
-        }
-        
-        function logout() {
-            currentUser = null;
-            currentUserRole = null;
-            currentUserName = null;
-            
-            document.getElementById('loginModal').classList.add('active');
-            document.getElementById('userNameDisplay').textContent = '';
-            document.querySelector('.btn-logout').style.display = 'none';
-            document.getElementById('tabsContainer').style.display = 'none';
-            document.getElementById('clientePanel').style.display = 'block';
-            document.getElementById('tabsContent').style.display = 'none';
-            
-            document.getElementById('consultaCodigo').value = '';
-            document.getElementById('consultaTelefono').value = '';
-            document.getElementById('resultadoConsulta').innerHTML = '';
-        }
-        
-        // =====================================================
-        // DASHBOARD
-        // =====================================================
-        async function cargarDashboard() {
-            const tabsContent = document.getElementById('tabsContent');
-            
-            try {
-                const { data: pedidosData } = await supabaseClient.from('pedidos').select('*');
-                const { data: clientesData } = await supabaseClient.from('clientes').select('*');
-                
-                const pendientes = pedidosData ? pedidosData.filter(p => p.estado === 'pendiente').length : 0;
-                const enProceso = pedidosData ? pedidosData.filter(p => p.estado === 'en_proceso').length : 0;
-                const terminados = pedidosData ? pedidosData.filter(p => p.estado === 'terminado').length : 0;
-                
-                let dashboardHtml = `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                        <div style="background: #1a73e8; color: white; padding: 20px; border-radius: 12px; text-align: center;">
-                            <h3>📦 Pedidos Pendientes</h3>
-                            <p style="font-size: 2rem;">${pendientes}</p>
-                        </div>
-                        <div style="background: #ffc107; padding: 20px; border-radius: 12px; text-align: center;">
-                            <h3>⚙️ En Proceso</h3>
-                            <p style="font-size: 2rem;">${enProceso}</p>
-                        </div>
-                        <div style="background: #28a745; color: white; padding: 20px; border-radius: 12px; text-align: center;">
-                            <h3>✅ Terminados</h3>
-                            <p style="font-size: 2rem;">${terminados}</p>
-                        </div>
-                        <div style="background: #17a2b8; color: white; padding: 20px; border-radius: 12px; text-align: center;">
-                            <h3>👥 Clientes</h3>
-                            <p style="font-size: 2rem;">${clientesData ? clientesData.length : 0}</p>
-                        </div>
-                    </div>
-                    <h3>📋 Últimos Pedidos</h3>
-                    <div class="table-container">
-                        <table>
-                            <thead><tr><th>Código</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Fecha</th><th>Acciones</th></tr></thead>
-                            <tbody id="ultimosPedidosTabla"></tbody>
-                        </table>
-                    </div>
-                `;
-                
-                tabsContent.innerHTML = dashboardHtml;
-                
-                const { data: pedidos } = await supabaseClient
-                    .from('pedidos')
-                    .select('*, clientes(nombre)')
-                    .order('created_at', { ascending: false })
-                    .limit(10);
-                
-                const tbody = document.getElementById('ultimosPedidosTabla');
-                if (pedidos && pedidos.length > 0) {
-                    tbody.innerHTML = pedidos.map(p => `
-                        <tr>
-                            <td>${p.codigo}</td>
-                            <td>${p.clientes ? p.clientes.nombre : 'N/A'}</td>
-                            <td><span class="badge badge-${p.estado === 'pendiente' ? 'pendiente' : p.estado === 'en_proceso' ? 'proceso' : 'terminado'}">${p.estado}</span></td>
-                            <td>$${p.total}</td>
-                            <td>${new Date(p.fecha_creacion).toLocaleDateString()}</td>
-                            <td><button onclick="verDetallePedido(${p.id})">Ver</button></td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="6">No hay pedidos registrados</td></tr>';
-                }
-            } catch (err) {
-                tabsContent.innerHTML = `<div class="alert alert-error">Error cargando dashboard: ${err.message}</div>`;
-            }
-        }
-        
-        // =====================================================
-        // CONSULTA DE PEDIDO (CLIENTES)
-        // =====================================================
-        async function consultarPedido() {
-            const codigo = document.getElementById('consultaCodigo').value.trim();
-            const telefono = document.getElementById('consultaTelefono').value.trim();
-            const resultadoDiv = document.getElementById('resultadoConsulta');
-            
-            if (!codigo || !telefono) {
-                resultadoDiv.innerHTML = '<div class="alert alert-error">Ingresa código y teléfono</div>';
-                return;
-            }
-            
-            try {
-                const { data: pedido, error } = await supabaseClient
-                    .from('pedidos')
-                    .select('*, clientes(*)')
-                    .eq('codigo', codigo)
-                    .maybeSingle();
-                
-                if (error || !pedido) {
-                    resultadoDiv.innerHTML = '<div class="alert alert-error">Pedido no encontrado</div>';
-                    return;
-                }
-                
-                if (pedido.clientes.telefono !== telefono) {
-                    resultadoDiv.innerHTML = '<div class="alert alert-error">Teléfono incorrecto para este pedido</div>';
-                    return;
-                }
-                
-                const { data: detalles } = await supabaseClient
-                    .from('detalle_pedido')
-                    .select('*')
-                    .eq('pedido_id', pedido.id);
-                
-                let estadoTexto = '';
-                switch(pedido.estado) {
-                    case 'pendiente': estadoTexto = '<span class="badge badge-pendiente">⏳ Pendiente</span>'; break;
-                    case 'en_proceso': estadoTexto = '<span class="badge badge-proceso">⚙️ En proceso</span>'; break;
-                    case 'terminado': estadoTexto = '<span class="badge badge-terminado">✅ Terminado</span>'; break;
-                    default: estadoTexto = pedido.estado;
-                }
-                
-                let detallesHtml = '<h4>📋 Detalle del pedido:</h4><ul>';
-                if (detalles && detalles.length > 0) {
-                    detalles.forEach(d => {
-                        detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - $${d.subtotal}</li>`;
-                    });
-                } else {
-                    detallesHtml += '<li>Sin detalles registrados</li>';
-                }
-                detallesHtml += '</ul>';
-                
-                resultadoDiv.innerHTML = `
-                    <div class="card" style="margin-top: 15px;">
-                        <h3>📄 Pedido ${pedido.codigo}</h3>
-                        <p><strong>Cliente:</strong> ${pedido.clientes.nombre}</p>
-                        <p><strong>Estado:</strong> ${estadoTexto}</p>
-                        ${detallesHtml}
-                        <p><strong>💰 Total:</strong> $${pedido.total}</p>
-                    </div>
-                `;
-            } catch (err) {
-                resultadoDiv.innerHTML = `<div class="alert alert-error">Error: ${err.message}</div>`;
-            }
-        }
-        
-        function mostrarNuevoPedidoForm() {
-            alert('Formulario de nuevo pedido en desarrollo. Próximamente disponible.');
-        }
-        
-        function verDetallePedido(id) {
-            alert('Detalle de pedido - Función en desarrollo');
-        }
-        
-        async function cargarTabGenerico(tab) {
-            const tabsContent = document.getElementById('tabsContent');
-            tabsContent.innerHTML = `<div class="card" style="text-align: center;"><h3>📌 Módulo ${tab} en construcción</h3><p>Próximamente disponible</p></div>`;
-        }
-        
-        // Configurar tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                if (tab === 'dashboard') cargarDashboard();
-                else cargarTabGenerico(tab);
-            });
-        });
-        
-        // Verificar conexión al cargar
-        verificarConexion();
-        console.log('✅ Sistema listo');
-    </script>
+    <!-- Script principal -->
+    <script src="script.js"></script>
 </body>
 </html>
