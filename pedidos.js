@@ -58,53 +58,84 @@ function mostrarNuevoPedidoForm() {
     alert('📝 Formulario de nuevo pedido en desarrollo.\nPróximamente podrás realizar pedidos directamente desde aquí.');
 }
 
-// Placeholders para otros módulos
-async function cargarPedidos() { 
+// Función para mostrar el login desde el panel cliente
+function mostrarLogin() {
+    document.getElementById('loginModal').classList.add('active');
+}
+
+// ============================================
+// MÓDULOS DE ADMIN/TRABAJADOR (con verificación de sesión)
+// ============================================
+
+function verificarSesion() {
+    if (!AppState.isLoggedIn) {
+        alert('⚠️ Debes iniciar sesión para acceder a esta sección.');
+        mostrarLogin();
+        return false;
+    }
+    return true;
+}
+
+async function cargarPedidos() {
+    if (!verificarSesion()) return;
     document.getElementById('tabsContent').innerHTML = `
         <div class="card">
             <h3>📦 Módulo de Gestión de Pedidos</h3>
-            <p>Esta funcionalidad estará disponible en la próxima actualización.</p>
-            <p class="text-muted">Podrás: crear, editar, eliminar y dar seguimiento a todos los pedidos.</p>
+            <p>Aquí podrás gestionar todos los pedidos del taller.</p>
+            <p class="text-muted">Funcionalidades: crear, editar, eliminar y dar seguimiento a pedidos.</p>
+            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Nuevo Pedido</button>
         </div>
     `;
 }
 
-async function cargarProductos() { 
+async function cargarProductos() {
+    if (!verificarSesion()) return;
     document.getElementById('tabsContent').innerHTML = `
         <div class="card">
             <h3>🛒 Módulo de Inventario</h3>
-            <p>Esta funcionalidad estará disponible en la próxima actualización.</p>
-            <p class="text-muted">Podrás: gestionar productos, control de stock, precios y más.</p>
+            <p>Gestión completa de productos y stock.</p>
+            <p class="text-muted">Productos: lingotes, poleas, componentes, repuestos.</p>
+            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Agregar Producto</button>
         </div>
     `;
 }
 
-async function cargarClientes() { 
+async function cargarClientes() {
+    if (!verificarSesion()) return;
     document.getElementById('tabsContent').innerHTML = `
         <div class="card">
             <h3>👥 Módulo de Clientes</h3>
-            <p>Esta funcionalidad estará disponible en la próxima actualización.</p>
-            <p class="text-muted">Podrás: gestionar clientes, ver historial de compras y más.</p>
+            <p>Gestión de clientes frecuentes (tiendas) y clientes ocasionales.</p>
+            <p class="text-muted">Historial de compras, pedidos personalizados, etc.</p>
+            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Nuevo Cliente</button>
         </div>
     `;
 }
 
-async function cargarTrabajadores() { 
+async function cargarTrabajadores() {
+    if (!verificarSesion()) return;
     document.getElementById('tabsContent').innerHTML = `
         <div class="card">
             <h3>👨‍🔧 Módulo de Trabajadores</h3>
-            <p>Esta funcionalidad estará disponible en la próxima actualización.</p>
-            <p class="text-muted">Podrás: gestionar empleados, asignar tareas y controlar rendimiento.</p>
+            <p>Gestión de empleados, áreas de trabajo y asignaciones.</p>
+            <p class="text-muted">Áreas: Fundición, Torneado, Electricidad, Electrónica, Software, Reparación general, Soldadura.</p>
+            <button class="btn btn-primary" onclick="alert('En desarrollo')">➕ Agregar Trabajador</button>
         </div>
     `;
 }
 
-async function cargarReportes() { 
+async function cargarReportes() {
+    if (!verificarSesion()) return;
     document.getElementById('tabsContent').innerHTML = `
         <div class="card">
             <h3>📄 Módulo de Reportes</h3>
-            <p>Esta funcionalidad estará disponible en la próxima actualización.</p>
-            <p class="text-muted">Podrás: generar reportes PDF, análisis de ventas y más.</p>
+            <p>Generación de reportes profesionales en PDF.</p>
+            <p class="text-muted">Reportes: ganancias mensuales, pedidos pendientes, productos más vendidos, etc.</p>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="alert('En desarrollo')">📊 Reporte de Ventas</button>
+                <button class="btn btn-success" onclick="alert('En desarrollo')">📦 Reporte de Inventario</button>
+                <button class="btn btn-info" onclick="alert('En desarrollo')">👥 Reporte de Clientes</button>
+            </div>
         </div>
     `;
 }
