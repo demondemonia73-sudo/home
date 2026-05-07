@@ -2,26 +2,55 @@
 <html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
+    <script>
+        // Configuración directa (sin depender de config.js)
+        const SUPABASE_URL = 'https://iyanyiihgjnnlcjapnge.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_gxx8Bo4xtnPcCHWTooE3fA_yE9j1cIz';
+        
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    </script>
 </head>
 <body>
-    <h2>Diagnóstico</h2>
+    <h2>🔍 Diagnóstico Directo</h2>
     <pre id="resultado">Cargando...</pre>
+    
     <script>
         async function test() {
             const out = document.getElementById('resultado');
-            out.innerHTML = 'Probando conexión...\n';
+            out.innerHTML = 'Probando conexión directa a Supabase...\n';
+            out.innerHTML += `URL: ${SUPABASE_URL}\n`;
+            out.innerHTML += `KEY: ${SUPABASE_KEY.substring(0, 20)}...\n\n`;
             
-            const { data: cats, error: e1 } = await db.from('categorias').select('*');
-            out.innerHTML += `\n📁 Categorías: ${cats?.length || 0} - Error: ${e1?.message || 'ninguno'}`;
-            
-            const { data: prods, error: e2 } = await db.from('productos').select('*');
-            out.innerHTML += `\n📦 Productos: ${prods?.length || 0} - Error: ${e2?.message || 'ninguno'}`;
-            
-            if (prods?.length > 0) {
-                out.innerHTML += `\n\n✅ Primer producto: ${JSON.stringify(prods[0])}`;
+            try {
+                // Probar categorías
+                const { data: cats, error: e1 } = await db.from('categorias').select('*');
+                out.innerHTML += `📁 CATEGORÍAS: ${cats?.length || 0} registros\n`;
+                if (e1) out.innerHTML += `   Error: ${e1.message}\n`;
+                if (cats && cats.length > 0) {
+                    out.innerHTML += `   Primera: ${cats[0].nombre}\n`;
+                }
+                
+                // Probar productos
+                const { data: prods, error: e2 } = await db.from('productos').select('*');
+                out.innerHTML += `\n📦 PRODUCTOS: ${prods?.length || 0} registros\n`;
+                if (e2) out.innerHTML += `   Error: ${e2.message}\n`;
+                if (prods && prods.length > 0) {
+                    out.innerHTML += `   Primero: ${prods[0].nombre} - Bs ${prods[0].precio_venta}\n`;
+                }
+                
+                // Probar consulta con join
+                const { data: joinData, error: e3 } = await db
+                    .from('productos')
+                    .select('*, categorias(nombre)')
+                    .limit(3);
+                out.innerHTML += `\n🔗 JOIN productos+categorias: ${joinData?.length || 0} registros\n`;
+                if (e3) out.innerHTML += `   Error: ${e3.message}\n`;
+                
+            } catch (err) {
+                out.innerHTML += `\n❌ ERROR GENERAL: ${err.message}\n`;
             }
         }
+        
         test();
     </script>
 </body>
