@@ -5,44 +5,48 @@
 document.addEventListener('DOMContentLoaded', async function() {
     console.log(`🚀 Iniciando ${CONFIG.APP_NAME} v${CONFIG.APP_VERSION}`);
     
-    // Verificar conexión
     const connected = await verificarConexion();
     if (!connected) {
         console.warn('⚠️ No se pudo conectar con Supabase.');
     }
     
     // ============================================
-    // ASIGNAR EVENTOS (con verificación de existencia)
+    // ASIGNAR EVENTOS
     // ============================================
     
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
-    const consultarBtn = document.getElementById('consultarBtn');
-    const nuevoPedidoBtn = document.getElementById('nuevoPedidoBtn');
     const mostrarLoginBtn = document.getElementById('mostrarLoginBtn');
     const cerrarModalBtn = document.getElementById('cerrarModalBtn');
+    const consultarBtn = document.getElementById('consultarBtn');
+    const nuevoPedidoBtn = document.getElementById('nuevoPedidoBtn');
     
-    if (loginBtn) loginBtn.onclick = login;
-    if (logoutBtn) logoutBtn.onclick = logout;
-    if (consultarBtn) consultarBtn.onclick = () => {
-        if (typeof consultarPedido === 'function') {
-            consultarPedido();
-        } else {
-            console.error('consultarPedido no está definida');
-            alert('Error: Función no cargada correctamente. Recarga la página.');
-        }
-    };
-    if (nuevoPedidoBtn) nuevoPedidoBtn.onclick = () => {
-        if (typeof mostrarNuevoPedidoForm === 'function') {
-            mostrarNuevoPedidoForm();
-        } else {
-            window.location.href = 'tienda.html';
-        }
-    };
-    if (mostrarLoginBtn) mostrarLoginBtn.onclick = mostrarLogin;
-    if (cerrarModalBtn) cerrarModalBtn.onclick = cerrarModalLogin;
+    if (loginBtn) loginBtn.onclick = () => login();
+    if (logoutBtn) logoutBtn.onclick = () => logout();
+    if (mostrarLoginBtn) mostrarLoginBtn.onclick = () => mostrarLogin();
+    if (cerrarModalBtn) cerrarModalBtn.onclick = () => cerrarModalLogin();
     
-    // Cerrar modal si se clickea fuera del contenido
+    if (consultarBtn) {
+        consultarBtn.onclick = () => {
+            if (typeof window.consultarPedido === 'function') {
+                window.consultarPedido();
+            } else {
+                console.error('consultarPedido no está definida');
+                alert('Error: Función no disponible. Recarga la página.');
+            }
+        };
+    }
+    
+    if (nuevoPedidoBtn) {
+        nuevoPedidoBtn.onclick = () => {
+            if (typeof window.mostrarNuevoPedidoForm === 'function') {
+                window.mostrarNuevoPedidoForm();
+            } else {
+                window.location.href = 'tienda.html';
+            }
+        };
+    }
+    
     const modal = document.getElementById('loginModal');
     if (modal) {
         modal.onclick = function(e) {
@@ -53,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     // ============================================
-    // CONFIGURAR TABS (solo si existe cargarDashboard)
+    // CONFIGURAR TABS
     // ============================================
     const tabs = document.querySelectorAll('.tab-btn');
     if (tabs.length > 0) {
@@ -71,7 +75,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const tab = btn.dataset.tab;
                 tabs.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                
                 const moduleFn = tabModules[tab];
                 if (moduleFn) moduleFn();
                 else console.warn(`Módulo ${tab} no disponible`);
@@ -81,3 +84,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     console.log('✅ Sistema inicializado correctamente');
 });
+
+window.mostrarLogin = mostrarLogin;
+window.cerrarModalLogin = cerrarModalLogin;
