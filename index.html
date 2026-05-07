@@ -18,6 +18,9 @@
         <header class="header">
             <h1>🔧 TallerTotal Manager</h1>
             <div class="user-info">
+                <a href="tienda.html" id="linkCatalogo" style="color: white; text-decoration: none; margin-right: 1rem; background: rgba(255,255,255,0.2); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem;">
+                    🛒 Catálogo
+                </a>
                 <span id="userNameDisplay"></span>
                 <button id="logoutBtn" class="btn btn-danger" style="display: none;">Cerrar Sesión</button>
             </div>
@@ -39,6 +42,7 @@
             <button class="tab-btn" data-tab="reportes">📄 Reportes</button>
         </nav>
 
+        <!-- Panel Cliente (visible cuando NO hay sesión) -->
         <section id="clientePanel">
             <div class="card">
                 <h2>🔍 Consultar mi pedido</h2>
@@ -58,10 +62,11 @@
             <div id="resultadoConsulta"></div>
         </section>
 
+        <!-- Contenido dinámico para admin/trabajadores -->
         <main id="tabsContent" style="display: none;"></main>
     </div>
 
-    <!-- Modal de Login MEJORADO - con botón cerrar -->
+    <!-- Modal de Login - con botón cerrar -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -80,14 +85,18 @@
             <button id="loginBtn" class="btn btn-primary btn-block">Ingresar al sistema</button>
             <hr>
             <p class="text-muted text-center" style="margin: 0;">¿Solo quieres consultar tu pedido? Cierra esta ventana</p>
+            <p class="text-muted text-center" style="margin-top: 0.5rem; font-size: 11px;">
+                <a href="tienda.html" style="color: #1a73e8;">🛒 O haz un nuevo pedido aquí</a>
+            </p>
         </div>
     </div>
 
+    <!-- Scripts en orden correcto -->
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="dashboard.js"></script>
     <script src="pedidos.js"></script>
-    <script src="productos.js"></script>   <!-- NUEVO -->
+    <script src="productos.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
