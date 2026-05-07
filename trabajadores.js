@@ -75,6 +75,7 @@ async function cargarTrabajadores() {
         passwordInput.style.filter = 'blur(4px)';
     }
     
+    // Cargar áreas primero
     await cargarAreas();
     await refrescarListaTrabajadores();
 }
@@ -82,30 +83,53 @@ async function cargarTrabajadores() {
 let trabajadorEditando = null;
 
 async function cargarAreas() {
+    console.log('🔍 [cargarAreas] Iniciando carga de áreas...');
+    
+    // Verificar que db existe
+    if (typeof db === 'undefined') {
+        console.error('❌ db no está definido');
+        const container = document.getElementById('areasCheckbox');
+        if (container) container.innerHTML = '<div class="alert alert-danger">Error de conexión con la base de datos</div>';
+        return;
+    }
+    
     try {
         const { data, error } = await db
             .from('areas')
             .select('*')
             .order('nombre');
         
-        if (error) throw error;
-        areasData = data || [];
-        
-        const container = document.getElementById('areasCheckbox');
-        if (container) {
-            if (areasData.length === 0) {
-                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Crea áreas primero en la base de datos.</div>';
-            } else {
-                container.innerHTML = areasData.map(area => `
-                    <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer;">
-                        <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
-                    </label>
-                `).join('');
-            }
+        if (error) {
+            console.error('❌ Error de Supabase:', error);
+            throw error;
         }
         
+        areasData = data || [];
+        console.log(`✅ Áreas cargadas: ${areasData.length} registros`);
+        
+        // Esperar un momento para asegurar que el DOM esté listo
+        setTimeout(() => {
+            const container = document.getElementById('areasCheckbox');
+            console.log('📦 Contenedor areasCheckbox:', container ? 'Encontrado' : 'NO ENCONTRADO');
+            
+            if (container) {
+                if (areasData.length === 0) {
+                    container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Crea áreas primero en la base de datos.</div>';
+                } else {
+                    container.innerHTML = areasData.map(area => `
+                        <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer;">
+                            <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
+                        </label>
+                    `).join('');
+                    console.log('✅ Checkboxes generados correctamente');
+                }
+            } else {
+                console.error('❌ No se encontró el contenedor #areasCheckbox');
+            }
+        }, 100);
+        
     } catch (err) {
-        console.error('Error cargando áreas:', err);
+        console.error('❌ Error cargando áreas:', err);
         const container = document.getElementById('areasCheckbox');
         if (container) {
             container.innerHTML = `<div class="alert alert-danger">Error cargando áreas: ${err.message}</div>`;
@@ -331,7 +355,7 @@ async function refrescarListaTrabajadores() {
                             <th>Áreas</th>
                             <th>Estado</th>
                             <th>Acciones</th>
-                        </tr>
+                        </table>
                     </thead>
                     <tbody>
         `;
@@ -346,7 +370,7 @@ async function refrescarListaTrabajadores() {
                     <td><strong>${t.nombre}</strong></td>
                     <td>${t.email}</td>
                     <td style="position: relative;">
-                        <span id="pass-${t.id}" style="filter: blur(4px); cursor: pointer;" onclick="revelePassword(${t.id}, '${t.password_visible.replace(/'/g, "\\'")}')">••••••</span>
+                        <span id="pass-${t.id}" style="filter: blur(4px); cursor: pointer;" onclick="revelePassword(${t.id}, '${(t.password_visible || '').replace(/'/g, "\\'")}')">••••••</span>
                         <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem; margin-left: 0.5rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
                     </td
                     <td><small>${areasNombres}</small></td>
@@ -379,7 +403,6 @@ async function refrescarListaTrabajadores() {
     }
 }
 
-// Exponer funciones globalmente
 window.editarTrabajador = editarTrabajador;
 window.toggleActivoTrabajador = toggleActivoTrabajador;
 window.resetearPassword = resetearPassword;
