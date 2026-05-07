@@ -1,1 +1,48 @@
+// ============================================
+// PUNTO DE ENTRADA PRINCIPAL
+// ============================================
 
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log(`🚀 Iniciando ${CONFIG.APP_NAME} v${CONFIG.APP_VERSION}`);
+    
+    // Verificar conexión
+    const connected = await verificarConexion();
+    if (!connected) {
+        console.warn('⚠️ No se pudo conectar con Supabase. Verifica tu conexión a internet.');
+    }
+    
+    // Asignar eventos a los botones
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const consultarBtn = document.getElementById('consultarBtn');
+    const nuevoPedidoBtn = document.getElementById('nuevoPedidoBtn');
+    
+    if (loginBtn) loginBtn.onclick = login;
+    if (logoutBtn) logoutBtn.onclick = logout;
+    if (consultarBtn) consultarBtn.onclick = consultarPedido;
+    if (nuevoPedidoBtn) nuevoPedidoBtn.onclick = mostrarNuevoPedidoForm;
+    
+    // Configurar navegación por tabs
+    const tabs = document.querySelectorAll('.tab-btn');
+    const tabModules = {
+        'dashboard': cargarDashboard,
+        'pedidos': cargarPedidos,
+        'productos': cargarProductos,
+        'clientes': cargarClientes,
+        'trabajadores': cargarTrabajadores,
+        'reportes': cargarReportes
+    };
+    
+    tabs.forEach(btn => {
+        btn.onclick = () => {
+            const tab = btn.dataset.tab;
+            tabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const moduleFn = tabModules[tab];
+            if (moduleFn) moduleFn();
+        };
+    });
+    
+    console.log('✅ Sistema inicializado correctamente');
+});
