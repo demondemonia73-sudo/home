@@ -31,9 +31,9 @@ async function cargarTrabajadores() {
                     <label>Contraseña *</label>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña" style="flex: 1;">
-                        <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️ Mostrar</button>
+                        <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️</button>
                     </div>
-                    <small class="text-muted">Mantén clic en "Mostrar" para ver la contraseña</small>
+                    <small class="text-muted">Haz clic en el ojo para mostrar/ocultar la contraseña</small>
                 </div>
                 <div class="form-group">
                     <label>Áreas de trabajo</label>
@@ -59,28 +59,18 @@ async function cargarTrabajadores() {
     document.getElementById('btnGuardarTrabajador').onclick = guardarTrabajador;
     document.getElementById('btnCancelarTrabajador').onclick = ocultarFormulario;
     
-    // Evento para mostrar/ocultar contraseña
+    // Evento para mostrar/ocultar contraseña (toggle al hacer clic)
     const toggleBtn = document.getElementById('togglePasswordBtn');
     const passwordInput = document.getElementById('trabajadorPassword');
     if (toggleBtn && passwordInput) {
-        let timeout;
-        toggleBtn.onmousedown = () => {
-            passwordInput.type = 'text';
-            timeout = setTimeout(() => {
-                passwordInput.type = 'password';
-            }, 2000);
-        };
-        toggleBtn.onmouseup = () => {
-            clearTimeout(timeout);
-            passwordInput.type = 'password';
-        };
-        toggleBtn.onmouseleave = () => {
-            clearTimeout(timeout);
-            passwordInput.type = 'password';
+        let passwordVisible = false;
+        toggleBtn.onclick = () => {
+            passwordVisible = !passwordVisible;
+            passwordInput.type = passwordVisible ? 'text' : 'password';
+            toggleBtn.textContent = passwordVisible ? '🙈' : '👁️';
         };
     }
     
-    // Cargar áreas y trabajadores
     await cargarAreas();
     await refrescarListaTrabajadores();
 }
@@ -100,7 +90,7 @@ async function cargarAreas() {
         const container = document.getElementById('areasCheckbox');
         if (container) {
             if (areasData.length === 0) {
-                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Crea áreas primero en la base de datos.</div>';
+                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Ejecuta el SQL para crear áreas en la base de datos.</div>';
             } else {
                 container.innerHTML = areasData.map(area => `
                     <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px;">
@@ -126,6 +116,12 @@ function mostrarFormularioNuevo() {
     document.getElementById('trabajadorEmail').value = '';
     document.getElementById('trabajadorPassword').value = '';
     
+    // Resetear ojo
+    const passwordInput = document.getElementById('trabajadorPassword');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    if (passwordInput) passwordInput.type = 'password';
+    if (toggleBtn) toggleBtn.textContent = '👁️';
+    
     // Limpiar checkboxes
     document.querySelectorAll('.area-checkbox').forEach(cb => cb.checked = false);
     document.getElementById('formTrabajador').style.display = 'block';
@@ -138,6 +134,12 @@ function editarTrabajador(trabajador, areasAsignadas) {
     document.getElementById('trabajadorNombre').value = trabajador.nombre;
     document.getElementById('trabajadorEmail').value = trabajador.email;
     document.getElementById('trabajadorPassword').value = trabajador.password_visible || '';
+    
+    // Resetear ojo
+    const passwordInput = document.getElementById('trabajadorPassword');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    if (passwordInput) passwordInput.type = 'password';
+    if (toggleBtn) toggleBtn.textContent = '👁️';
     
     // Marcar checkboxes de áreas asignadas
     document.querySelectorAll('.area-checkbox').forEach(cb => {
@@ -158,7 +160,6 @@ async function guardarTrabajador() {
     const email = document.getElementById('trabajadorEmail').value.trim();
     const password = document.getElementById('trabajadorPassword').value.trim();
     
-    // Obtener áreas seleccionadas
     const areasSeleccionadas = [];
     document.querySelectorAll('.area-checkbox:checked').forEach(cb => {
         areasSeleccionadas.push(parseInt(cb.value));
@@ -179,10 +180,9 @@ async function guardarTrabajador() {
     
     try {
         if (trabajadorEditando) {
-            // Actualizar trabajador existente
-            const updateData = {
-                nombre: nombre,
-                email: email
+            const updateData = { 
+                nombre: nombre, 
+                email: email 
             };
             if (password) {
                 updateData.password_hash = password;
@@ -193,18 +193,14 @@ async function guardarTrabajador() {
                 .from('usuarios')
                 .update(updateData)
                 .eq('id', trabajadorEditando.id);
-            
             if (error) throw error;
             
-            // Actualizar áreas
             await db.from('usuario_areas').delete().eq('usuario_id', trabajadorEditando.id);
             for (const areaId of areasSeleccionadas) {
                 await db.from('usuario_areas').insert([{ usuario_id: trabajadorEditando.id, area_id: areaId }]);
             }
-            
             alert('✅ Trabajador actualizado');
         } else {
-            // Crear nuevo trabajador
             const { data, error } = await db
                 .from('usuarios')
                 .insert([{
@@ -216,16 +212,12 @@ async function guardarTrabajador() {
                     activo: true
                 }])
                 .select();
-            
             if (error) throw error;
             
             const nuevoId = data[0].id;
-            
-            // Insertar áreas
             for (const areaId of areasSeleccionadas) {
                 await db.from('usuario_areas').insert([{ usuario_id: nuevoId, area_id: areaId }]);
             }
-            
             alert('✅ Trabajador creado');
         }
         
@@ -246,11 +238,9 @@ async function toggleActivoTrabajador(id, activo, nombre) {
             .from('usuarios')
             .update({ activo: activo })
             .eq('id', id);
-        
         if (error) throw error;
         alert(`✅ Trabajador ${accion === 'activar' ? 'activado' : 'desactivado'}`);
         await refrescarListaTrabajadores();
-        
     } catch (err) {
         alert('❌ Error: ' + err.message);
     }
@@ -258,12 +248,10 @@ async function toggleActivoTrabajador(id, activo, nombre) {
 
 async function resetearPassword(id, nombre) {
     const nuevaPassword = prompt(`🔑 Nueva contraseña para "${nombre}"\n\nIngresa la nueva contraseña:`);
-    
     if (!nuevaPassword || nuevaPassword.trim() === '') {
         alert('⚠️ Contraseña no válida');
         return;
     }
-    
     if (!confirm(`¿Establecer nueva contraseña para "${nombre}"?`)) return;
     
     try {
@@ -274,11 +262,9 @@ async function resetearPassword(id, nombre) {
                 password_visible: nuevaPassword
             })
             .eq('id', id);
-        
         if (error) throw error;
         alert(`✅ Contraseña actualizada para "${nombre}"\nNueva contraseña: ${nuevaPassword}`);
         await refrescarListaTrabajadores();
-        
     } catch (err) {
         alert('❌ Error: ' + err.message);
     }
@@ -309,7 +295,7 @@ async function refrescarListaTrabajadores() {
         
         let html = `
             <div class="table-container">
-                <table>
+                </table>
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -328,34 +314,34 @@ async function refrescarListaTrabajadores() {
             const areasIds = usuarioAreas?.filter(ua => ua.usuario_id === t.id).map(ua => ua.area_id) || [];
             const areasNombres = areas?.filter(a => areasIds.includes(a.id)).map(a => `${a.icono || '📁'} ${a.nombre}`).join(', ') || 'Sin áreas';
             
-            // Contraseña oculta con asteriscos
-            const passwordMostrar = t.password_visible ? '••••••' : '••••••';
-            
             html += `
                 <tr>
                     <td>${t.id}</td>
                     <td><strong>${t.nombre}</strong></td>
                     <td>${t.email}</td>
-                    <td><code>${passwordMostrar}</code> <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑</button></td>
+                    <td><code>••••••</code> <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button></td>
                     <td><small>${areasNombres}</small></td>
                     <td>
-                        <span class="badge" style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white;">
+                        <span class="badge" style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white; padding: 4px 8px; border-radius: 12px;">
                             ${t.activo ? '✅ Activo' : '❌ Inactivo'}
                         </span>
                     </td>
-                    <td>
-                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                            <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
-                            <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; padding: 0.3rem 0.6rem;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
-                                ${t.activo ? '❌ Desactivar' : '✅ Activar'}
-                            </button>
-                        </div>
-                    </td>
+                    <td style="white-space: nowrap;">
+                        <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
+                        <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; color: white; padding: 0.3rem 0.6rem;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
+                            ${t.activo ? '❌ Desactivar' : '✅ Activar'}
+                        </button>
+                    </td
                 </tr>
             `;
         }
         
-        html += `</tbody></table></div>`;
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
         listaDiv.innerHTML = html;
         
     } catch (err) {
