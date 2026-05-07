@@ -69,6 +69,25 @@ async function consultarPedido() {
             return;
         }
         
+        // Mostrar cotización si el pedido está en estado 'cotizado'
+        if (pedido.estado === 'cotizado' && pedido.precio_asignado_manual) {
+            resultadoDiv.innerHTML = `
+                <div class="card" style="margin-top: 1rem; border-left: 4px solid #ffc107;">
+                    <h3>📄 Pedido ${pedido.codigo}</h3>
+                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #ffc107; color: #333;">💰 Cotizado</span></p>
+                    ${detallesHtml}
+                    <p><strong>💰 Precio cotizado:</strong> <strong style="color: #28a745;">Bs ${pedido.precio_asignado_manual.toFixed(2)}</strong></p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="aceptarCotizacion(${pedido.id}, '${pedido.codigo}')">✅ Aceptar pedido</button>
+                        <button class="btn btn-danger" onclick="cancelarCotizacion(${pedido.id}, '${pedido.codigo}')">❌ Cancelar pedido</button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
         const estadoText = {
             'pendiente': '⏳ Pendiente - Esperando asignación',
             'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
@@ -76,7 +95,6 @@ async function consultarPedido() {
             'entregado': '📦 Entregado'
         };
         
-        // Mostrar tipo de entrega si existe
         let entregaHtml = '';
         if (pedido.tipo_entrega) {
             const entregaText = {
@@ -135,6 +153,7 @@ async function cargarPedidos() {
                 <button id="filtroTerminado" class="btn-filtro-pedido" data-estado="terminado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">✅ Terminados</button>
                 <button id="filtroEntregado" class="btn-filtro-pedido" data-estado="entregado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">📦 Entregados</button>
                 <button id="filtroRechazado" class="btn-filtro-pedido" data-estado="rechazado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">❌ Rechazados</button>
+                <button id="filtroCotizado" class="btn-filtro-pedido" data-estado="cotizado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">💰 Cotizados</button>
             </div>
             
             <div id="listaPedidos">
@@ -149,6 +168,7 @@ async function cargarPedidos() {
     document.getElementById('filtroTerminado').onclick = () => aplicarFiltro('terminado');
     document.getElementById('filtroEntregado').onclick = () => aplicarFiltro('entregado');
     document.getElementById('filtroRechazado').onclick = () => aplicarFiltro('rechazado');
+    document.getElementById('filtroCotizado').onclick = () => aplicarFiltro('cotizado');
     document.getElementById('btnRefrescarPedidos').onclick = () => refrescarListaPedidos();
     
     await refrescarListaPedidos();
@@ -169,7 +189,8 @@ function aplicarFiltro(estado) {
         'en_proceso': 'filtroProceso',
         'terminado': 'filtroTerminado',
         'entregado': 'filtroEntregado',
-        'rechazado': 'filtroRechazado'
+        'rechazado': 'filtroRechazado',
+        'cotizado': 'filtroCotizado'
     };
     
     const btnActivo = document.getElementById(btnMap[estado]);
@@ -220,7 +241,6 @@ async function refrescarListaPedidos() {
             };
             const entregaShow = p.tipo_entrega ? entregaText[p.tipo_entrega] || p.tipo_entrega : 'N/A';
             
-            // Selector de estado con opción de rechazado
             let estadoSelect = `
                 <select id="estado-${p.id}" class="form-control" style="width: 130px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
                     <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
@@ -228,6 +248,7 @@ async function refrescarListaPedidos() {
                     <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
                     <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
                     <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
+                    <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
                 </select>
             `;
             
@@ -236,14 +257,15 @@ async function refrescarListaPedidos() {
                     <td><strong>${p.codigo}</strong></td>
                     <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
                     <td>${p.clientes?.telefono || 'N/A'}</td>
-                    <td><strong style="color: #28a745;">Bs ${p.total.toFixed(2)}</strong></td>
+                    <td><strong style="color: #28a745;">Bs ${p.total.toFixed(2)}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
                     <td>${estadoSelect}</td>
                     <td>${entregaShow}</td>
                     <td>${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
                     <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
                     <td>
                         <button class="btn" style="background: #17a2b8; padding: 0.3rem 0.6rem;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
-                        ${p.estado === 'pendiente' ? `<button class="btn" style="background: #dc3545; padding: 0.3rem 0.6rem; margin-top: 0.2rem;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
+                        ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem; margin-top: 0.2rem;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar Precio</button>` : ''}
+                        ${p.estado === 'pendiente' && !p.requiere_cotizacion ? `<button class="btn" style="background: #dc3545; padding: 0.3rem 0.6rem; margin-top: 0.2rem;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
                         ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
                 </tr>
@@ -277,8 +299,80 @@ async function cambiarEstadoPedido(id, nuevoEstado) {
 }
 
 // ============================================
-// NUEVA FUNCIÓN: RECHAZAR PEDIDO
+// FUNCIONES PARA PEDIDOS ESPECIALES
 // ============================================
+
+async function asignarPrecioEspecial(id, codigo) {
+    const precioActual = prompt(`✏️ Asignar precio al pedido especial ${codigo}\n\nIngresa el precio final en Bolivianos (Bs):`);
+    
+    if (!precioActual || parseFloat(precioActual) <= 0) {
+        alert('⚠️ Ingresa un precio válido mayor a 0');
+        return;
+    }
+    
+    const precioNum = parseFloat(precioActual);
+    
+    if (!confirm(`¿Asignar precio de Bs ${precioNum.toFixed(2)} al pedido ${codigo}?\n\nEl cliente podrá aceptar o cancelar.`)) {
+        return;
+    }
+    
+    try {
+        const { error } = await db
+            .from('pedidos')
+            .update({ 
+                precio_asignado_manual: precioNum,
+                estado: 'cotizado',
+                total: precioNum
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        alert(`✅ Precio asignado: Bs ${precioNum.toFixed(2)}\nEl cliente verá el precio y podrá aceptar o cancelar.`);
+        await refrescarListaPedidos();
+        
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
+
+async function aceptarCotizacion(id, codigo) {
+    if (!confirm(`¿Aceptas el precio para el pedido ${codigo}?\n\nEl pedido entrará en proceso de fabricación.`)) return;
+    
+    try {
+        const { error } = await db
+            .from('pedidos')
+            .update({ estado: 'en_proceso' })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        alert('✅ Pedido aceptado. Procederemos con la fabricación.');
+        location.reload();
+        
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
+
+async function cancelarCotizacion(id, codigo) {
+    if (!confirm(`¿Cancelar el pedido ${codigo}?\n\nEl producto no se fabricará.`)) return;
+    
+    try {
+        const { error } = await db
+            .from('pedidos')
+            .update({ estado: 'cancelado_por_cliente' })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        alert('❌ Pedido cancelado');
+        location.reload();
+        
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
 
 async function rechazarPedido(id, codigo) {
     const motivo = prompt(`❌ ¿Por qué rechazas el pedido ${codigo}?\n\nEscribe el motivo para que el cliente lo vea:`);
@@ -334,7 +428,12 @@ async function verDetallePedido(id) {
         rechazoInfo = `\n━━━━━━━━━━━━━━━━━━━━━━\n❌ MOTIVO DEL RECHAZO:\n${pedido.motivo_rechazo}\nFecha: ${new Date(pedido.fecha_rechazo).toLocaleString()}`;
     }
     
-    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}${entregaInfo}\nTotal: Bs ${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}${rechazoInfo}`);
+    let cotizacionInfo = '';
+    if (pedido.estado === 'cotizado' && pedido.precio_asignado_manual) {
+        cotizacionInfo = `\n━━━━━━━━━━━━━━━━━━━━━━\n💰 PRECIO COTIZADO: Bs ${pedido.precio_asignado_manual.toFixed(2)}`;
+    }
+    
+    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}${entregaInfo}\nTotal: Bs ${pedido.total}${cotizacionInfo}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}${rechazoInfo}`);
 }
 
 function generarPDFPedido(id) {
@@ -345,3 +444,6 @@ function generarPDFPedido(id) {
 window.consultarPedido = consultarPedido;
 window.mostrarNuevoPedidoForm = mostrarNuevoPedidoForm;
 window.rechazarPedido = rechazarPedido;
+window.asignarPrecioEspecial = asignarPrecioEspecial;
+window.aceptarCotizacion = aceptarCotizacion;
+window.cancelarCotizacion = cancelarCotizacion;
