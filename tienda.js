@@ -8,6 +8,7 @@ let carrito = [];
 let filtroActual = 'todas';
 let clienteActual = null;
 let esClienteFrecuente = false;
+let tiposCorrea = []; // Nueva variable para tipos de correa
 
 // Cargar datos al iniciar
 document.addEventListener('DOMContentLoaded', async function() {
@@ -18,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('catalogoContainer').innerHTML = '<div class="alert alert-danger">Error de conexión</div>';
         return;
     }
+    
+    // Cargar tipos de correa desde la base de datos
+    await cargarTiposCorrea();
     
     const telefonoInput = document.getElementById('telefonoCliente');
     if (telefonoInput) {
@@ -42,6 +46,42 @@ document.addEventListener('DOMContentLoaded', async function() {
         };
     }
 });
+
+// Nueva función para cargar tipos de correa desde la base de datos
+async function cargarTiposCorrea() {
+    try {
+        const { data, error } = await db
+            .from('tipos_correa')
+            .select('*')
+            .eq('activo', true)
+            .order('medida_mm');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+            tiposCorrea = data;
+            console.log('✅ Tipos de correa cargados desde BD:', tiposCorrea.length);
+        } else {
+            // Fallback en caso de que no haya datos
+            tiposCorrea = [
+                { nombre: 'A', medida_mm: 13 },
+                { nombre: 'B', medida_mm: 17 },
+                { nombre: '3V', medida_mm: 9.5 },
+                { nombre: '5V', medida_mm: 15.5 }
+            ];
+            console.log('⚠️ Usando tipos de correa por defecto');
+        }
+    } catch (err) {
+        console.error('Error cargando tipos de correa:', err);
+        // Fallback
+        tiposCorrea = [
+            { nombre: 'A', medida_mm: 13 },
+            { nombre: 'B', medida_mm: 17 },
+            { nombre: '3V', medida_mm: 9.5 },
+            { nombre: '5V', medida_mm: 15.5 }
+        ];
+    }
+}
 
 async function verificarClienteFrecuente(telefono) {
     if (!telefono || telefono.length < 6) return;
@@ -214,6 +254,11 @@ function renderProducto(producto) {
         const precioBase = producto.precio_venta;
         const precioPorCanalExtra = producto.precio_por_canal_extra || 0;
         
+        // Generar opciones de tipo de correa desde la base de datos
+        const opcionesCorrea = tiposCorrea.map(t => 
+            `<option value="${t.nombre}">${t.nombre} (${t.medida_mm}mm)</option>`
+        ).join('');
+        
         medidasHtml = `
             <div class="medidas-especiales" style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 10px 0;">
                 <small style="font-weight: bold;">⚙️ Especificaciones de la polea:</small>
@@ -221,10 +266,7 @@ function renderProducto(producto) {
                     <div class="campo-medida">
                         <label>Tipo de correa</label>
                         <select id="tipoCorrea-${producto.id}" class="form-control" style="font-size: 0.8rem; padding: 5px;">
-                            <option value="A">Tipo A (13mm)</option>
-                            <option value="B">Tipo B (17mm)</option>
-                            <option value="3V">Tipo 3V (9.5mm)</option>
-                            <option value="5V">Tipo 5V (15.5mm)</option>
+                            ${opcionesCorrea}
                             <option value="personalizada">Personalizada</option>
                         </select>
                         <input type="text" id="correaPersonalizada-${producto.id}" placeholder="Especificar medida (mm)" style="display: none; width: 100%; margin-top: 5px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
@@ -343,6 +385,12 @@ function agregarAlCarritoConMedidas(producto) {
             }
             tipoCorrea = `Personalizada: ${correaPersonalizada}mm`;
             esPedidoEspecial = true;
+        } else {
+            // Buscar la medida del tipo de correa seleccionado
+            const tipoEncontrado = tiposCorrea.find(t => t.nombre === tipoCorrea);
+            if (tipoEncontrado) {
+                tipoCorrea = `${tipoCorrea} (${tipoEncontrado.medida_mm}mm)`;
+            }
         }
         
         if (diametroEje === 'personalizado') {
