@@ -12,9 +12,14 @@
         /* Estilos específicos para la tienda */
         .catalogo-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 1.5rem;
             margin-top: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .catalogo-grid {
+                grid-template-columns: 1fr;
+            }
         }
         .producto-tarjeta {
             background: white;
@@ -93,8 +98,8 @@
         }
         .medidas-especiales {
             background: #fff3cd;
-            padding: 0.5rem;
-            border-radius: 6px;
+            padding: 0.75rem;
+            border-radius: 8px;
             font-size: 0.8rem;
             margin: 0.5rem 0;
         }
@@ -104,12 +109,28 @@
             flex-wrap: wrap;
             margin-top: 0.5rem;
         }
-        .medidas-input input {
+        .medidas-input input, .medidas-input select {
             flex: 1;
             padding: 0.3rem;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 0.8rem;
+        }
+        .campo-medida {
+            margin-bottom: 10px;
+        }
+        .campo-medida label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .badge-frecuente {
+            background: #17a2b8;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
         }
     </style>
 </head>
@@ -122,9 +143,9 @@
             </div>
         </header>
 
-        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
             <!-- Columna izquierda: Catálogo -->
-            <div>
+            <div style="flex: 2; min-width: 250px;">
                 <div class="card">
                     <h2>📦 Nuestros Productos</h2>
                     <div id="filtrosContainer" style="margin: 1rem 0; flex-wrap: wrap; display: flex;"></div>
@@ -135,24 +156,44 @@
             </div>
 
             <!-- Columna derecha: Carrito de compras -->
-            <div>
+            <div style="flex: 1; min-width: 280px;">
                 <div class="carrito">
                     <h3>🛒 Pedido Actual</h3>
                     <div id="carritoItems">
                         <p class="text-muted">No hay productos agregados</p>
                     </div>
-                    <div id="carritoTotal" class="carrito-total">Total: $0.00</div>
+                    <div id="carritoTotal" class="carrito-total">Total: Bs 0.00</div>
+                    
                     <div class="form-group" style="margin-top: 1rem;">
-                        <label>Nombre de la tienda/cliente</label>
+                        <label>Nombre de la tienda/cliente *</label>
                         <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Ferretería Central">
                     </div>
                     <div class="form-group">
-                        <label>Teléfono de contacto</label>
+                        <label>Teléfono de contacto *</label>
                         <input type="tel" id="telefonoCliente" class="form-control" placeholder="0987654321">
                     </div>
+                    
+                    <!-- Opciones de entrega (se muestran si el cliente es frecuente) -->
+                    <div id="divOpcionesEntrega" style="display: none;">
+                        <div class="form-group">
+                            <label>🚚 Opciones de entrega</label>
+                            <select id="tipoEntrega" class="form-control">
+                                <option value="retiro_taller">📦 Retiro en taller</option>
+                                <option value="envio_domicilio">🚚 Envío a domicilio</option>
+                                <option value="entrega_tienda">🏪 Entrega en tienda</option>
+                            </select>
+                        </div>
+                        <div id="divDireccionEnvio" style="display: none;">
+                            <div class="form-group">
+                                <label>Dirección de envío</label>
+                                <textarea id="direccionEnvio" class="form-control" rows="2" placeholder="Ingresa la dirección completa"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
-                        <label>Dirección de entrega (opcional)</label>
-                        <textarea id="direccionCliente" class="form-control" rows="2" placeholder="Dirección para envío"></textarea>
+                        <label>Dirección de referencia</label>
+                        <textarea id="direccionCliente" class="form-control" rows="2" placeholder="Dirección o punto de referencia"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Notas adicionales</label>
