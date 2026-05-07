@@ -36,6 +36,24 @@ async function consultarPedido() {
             return;
         }
         
+        // ============================================
+        // PEDIDO ENTREGADO - NO SE MUESTRA DETALLE
+        // ============================================
+        if (pedido.estado === 'entregado') {
+            resultadoDiv.innerHTML = `
+                <div class="card" style="margin-top: 1rem; border-left: 4px solid #6c757d;">
+                    <h3>📄 Pedido ${pedido.codigo}</h3>
+                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #6c757d; color: white;">📦 Entregado</span></p>
+                    <p><strong>⚠️ Este pedido ya fue entregado y no requiere acciones.</strong></p>
+                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
+                    <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
+                </div>
+            `;
+            return;
+        }
+        
         const { data: detalles } = await db
             .from('detalle_pedido')
             .select('*')
@@ -91,8 +109,7 @@ async function consultarPedido() {
         const estadoText = {
             'pendiente': '⏳ Pendiente - Esperando asignación',
             'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
-            'terminado': '✅ Terminado - Listo para retirar',
-            'entregado': '📦 Entregado'
+            'terminado': '✅ Terminado - Listo para retirar'
         };
         
         let entregaHtml = '';
@@ -227,7 +244,7 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        let html = `<div class="table-container"><td><thead>运转
+        let html = `<div class="table-container"></table><thead>运转
                 <th>Código</th><th>Cliente</th><th>Teléfono</th><th>Total</th><th>Estado</th><th>Entrega</th><th>Adelanto</th><th>Fecha</th><th>Acciones</th>
             </thead><tbody>`;
         
@@ -275,7 +292,7 @@ async function refrescarListaPedidos() {
             `;
         }
         
-        html += `</tbody></table></div>`;
+        html += `</tbody>}</div>`;
         listaDiv.innerHTML = html;
         
     } catch (err) {
