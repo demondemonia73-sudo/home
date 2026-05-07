@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
     
-    // Buscar cliente por teléfono si ya existe en el input
     const telefonoInput = document.getElementById('telefonoCliente');
     if (telefonoInput) {
         telefonoInput.addEventListener('blur', async function() {
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const btnRealizar = document.getElementById('btnRealizarPedido');
     if (btnRealizar) btnRealizar.onclick = realizarPedido;
     
-    // Mostrar/ocultar dirección de envío según tipo de entrega
     const tipoEntrega = document.getElementById('tipoEntrega');
     if (tipoEntrega) {
         tipoEntrega.onchange = function() {
@@ -143,10 +141,17 @@ async function cargarProductosTienda() {
             const btnMedidas = document.getElementById(`add-medidas-${p.id}`);
             if (btnMedidas) btnMedidas.onclick = () => agregarAlCarritoConMedidas(p);
             
-            // Eventos para campos personalizados de poleas
             if (p.categoria_id === 1) {
+                const correaSelect = document.getElementById(`tipoCorrea-${p.id}`);
                 const ejeSelect = document.getElementById(`diametroEje-${p.id}`);
                 const canalesSelect = document.getElementById(`numCanales-${p.id}`);
+                
+                if (correaSelect) {
+                    correaSelect.onchange = () => {
+                        const personalizado = document.getElementById(`correaPersonalizada-${p.id}`);
+                        if (personalizado) personalizado.style.display = correaSelect.value === 'personalizada' ? 'block' : 'none';
+                    };
+                }
                 
                 if (ejeSelect) {
                     ejeSelect.onchange = () => {
@@ -158,7 +163,21 @@ async function cargarProductosTienda() {
                 if (canalesSelect) {
                     canalesSelect.onchange = () => {
                         const personalizado = document.getElementById(`canalesPersonalizado-${p.id}`);
-                        if (personalizado) personalizado.style.display = canalesSelect.value === 'personalizado' ? 'block' : 'none';
+                        const precioDiv = document.getElementById(`precioDinamico-${p.id}`);
+                        const avisoDiv = document.getElementById(`avisoPersonalizado-${p.id}`);
+                        
+                        if (personalizado) {
+                            personalizado.style.display = canalesSelect.value === 'personalizado' ? 'block' : 'none';
+                        }
+                        
+                        if (canalesSelect.value === 'personalizado') {
+                            if (precioDiv) precioDiv.style.display = 'none';
+                            if (avisoDiv) avisoDiv.style.display = 'block';
+                        } else {
+                            if (precioDiv) precioDiv.style.display = 'block';
+                            if (avisoDiv) avisoDiv.style.display = 'none';
+                            actualizarPrecioPolea(p.id, p.precio_venta, p.precio_por_canal_extra || 0);
+                        }
                     };
                 }
             }
@@ -170,12 +189,31 @@ async function cargarProductosTienda() {
     }
 }
 
+function actualizarPrecioPolea(productoId, precioBase, precioPorCanalExtra) {
+    const selectCanales = document.getElementById(`numCanales-${productoId}`);
+    const precioDiv = document.getElementById(`precioDinamico-${productoId}`);
+    
+    if (!selectCanales || !precioDiv) return;
+    
+    const canales = selectCanales.value;
+    
+    if (canales === 'personalizado') return;
+    
+    let precioFinal = precioBase;
+    if (parseInt(canales) >= 2) {
+        precioFinal = precioBase + (precioPorCanalExtra * (parseInt(canales) - 1));
+    }
+    precioDiv.innerHTML = `Precio estimado: Bs ${precioFinal.toFixed(2)}`;
+}
+
 function renderProducto(producto) {
     const categoriaId = producto.categoria_id;
     let medidasHtml = '';
     
-    // Caso especial: Poleas (categoría 1) - Nueva versión con selects
     if (categoriaId === 1) {
+        const precioBase = producto.precio_venta;
+        const precioPorCanalExtra = producto.precio_por_canal_extra || 0;
+        
         medidasHtml = `
             <div class="medidas-especiales" style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 10px 0;">
                 <small style="font-weight: bold;">⚙️ Especificaciones de la polea:</small>
@@ -205,19 +243,24 @@ function renderProducto(producto) {
                     <div class="campo-medida">
                         <label>Número de canales</label>
                         <select id="numCanales-${producto.id}" class="form-control" style="font-size: 0.8rem; padding: 5px;">
-                            <option value="1">1 canal</option>
-                            <option value="2">2 canales</option>
-                            <option value="3">3 canales</option>
-                            <option value="personalizado">Personalizado (más de 3)</option>
+                            <option value="1">1 canal (Precio base: Bs ${precioBase})</option>
+                            <option value="2">2 canales (+Bs ${precioPorCanalExtra})</option>
+                            <option value="3">3 canales (+Bs ${precioPorCanalExtra * 2})</option>
+                            <option value="personalizado">Personalizado (consultar precio)</option>
                         </select>
                         <input type="number" id="canalesPersonalizado-${producto.id}" placeholder="Número de canales" style="display: none; width: 100%; margin-top: 5px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;" min="1">
+                    </div>
+                    <div id="precioDinamico-${producto.id}" style="margin-top: 8px; font-size: 0.9rem; font-weight: bold; color: #28a745;">
+                        Precio estimado: Bs ${precioBase}
+                    </div>
+                    <div id="avisoPersonalizado-${producto.id}" style="display: none; margin-top: 8px; background: #fff3cd; padding: 5px; border-radius: 4px; font-size: 0.75rem;">
+                        ⚠️ Pedido especial - El precio será cotizado por el administrador
                     </div>
                 </div>
                 <button id="add-medidas-${producto.id}" class="btn" style="background: #28a745; padding: 8px 12px; margin-top: 12px; width: 100%;">✓ Agregar con estas especificaciones</button>
             </div>
         `;
     }
-    // Caso 2: Metales
     else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
         medidasHtml = `
             <div class="medidas-especiales" style="background: #e7f3ff; padding: 10px; border-radius: 8px; margin: 10px 0;">
@@ -257,7 +300,9 @@ function renderProducto(producto) {
     `;
 }
 
-function agregarAlCarrito(producto, cantidad = 1, especificaciones = null) {
+function agregarAlCarrito(producto, cantidad = 1, especificaciones = null, precioPersonalizado = null) {
+    const precioUsar = precioPersonalizado !== null ? precioPersonalizado : producto.precio_venta;
+    
     const itemExistente = carrito.find(i => i.id === producto.id && JSON.stringify(i.especificaciones) === JSON.stringify(especificaciones));
     
     if (itemExistente) {
@@ -266,10 +311,11 @@ function agregarAlCarrito(producto, cantidad = 1, especificaciones = null) {
         carrito.push({
             id: producto.id,
             nombre: producto.nombre,
-            precio: producto.precio_venta,
+            precio: precioUsar,
             cantidad: cantidad,
             especificaciones: especificaciones,
-            unidad: producto.unidad_medida
+            unidad: producto.unidad_medida,
+            esPedidoEspecial: especificaciones?.es_pedido_especial || false
         });
     }
     
@@ -281,14 +327,14 @@ function agregarAlCarritoConMedidas(producto) {
     const categoriaId = producto.categoria_id;
     let especificaciones = null;
     let cantidad = 1;
+    let precioFinal = producto.precio_venta;
+    let esPedidoEspecial = false;
     
-    // Caso: Poleas (categoría 1) - Capturar todas las especificaciones
     if (categoriaId === 1) {
         let tipoCorrea = document.getElementById(`tipoCorrea-${producto.id}`)?.value;
         let diametroEje = document.getElementById(`diametroEje-${producto.id}`)?.value;
         let numCanales = document.getElementById(`numCanales-${producto.id}`)?.value;
         
-        // Verificar campos personalizados para correa
         if (tipoCorrea === 'personalizada') {
             const correaPersonalizada = document.getElementById(`correaPersonalizada-${producto.id}`)?.value;
             if (!correaPersonalizada) {
@@ -296,9 +342,9 @@ function agregarAlCarritoConMedidas(producto) {
                 return;
             }
             tipoCorrea = `Personalizada: ${correaPersonalizada}mm`;
+            esPedidoEspecial = true;
         }
         
-        // Verificar eje personalizado
         if (diametroEje === 'personalizado') {
             const ejePersonalizado = document.getElementById(`ejePersonalizado-${producto.id}`)?.value;
             if (!ejePersonalizado) {
@@ -306,9 +352,9 @@ function agregarAlCarritoConMedidas(producto) {
                 return;
             }
             diametroEje = `Personalizado: ${ejePersonalizado}mm`;
+            esPedidoEspecial = true;
         }
         
-        // Verificar canales personalizados
         if (numCanales === 'personalizado') {
             const canalesPersonalizado = document.getElementById(`canalesPersonalizado-${producto.id}`)?.value;
             if (!canalesPersonalizado || canalesPersonalizado < 1) {
@@ -316,23 +362,34 @@ function agregarAlCarritoConMedidas(producto) {
                 return;
             }
             numCanales = canalesPersonalizado;
+            esPedidoEspecial = true;
+            precioFinal = 0;
+        } else {
+            const precioPorCanalExtra = producto.precio_por_canal_extra || 0;
+            if (parseInt(numCanales) >= 2) {
+                precioFinal = producto.precio_venta + (precioPorCanalExtra * (parseInt(numCanales) - 1));
+            }
         }
         
         especificaciones = {
             tipo_correa: tipoCorrea,
             diametro_eje_mm: diametroEje,
-            num_canales: numCanales
+            num_canales: numCanales,
+            es_pedido_especial: esPedidoEspecial,
+            precio_calculado: precioFinal
         };
         
-        // Limpiar campos personalizados
         const correaInput = document.getElementById(`correaPersonalizada-${producto.id}`);
         if (correaInput) correaInput.value = '';
         const ejeInput = document.getElementById(`ejePersonalizado-${producto.id}`);
         if (ejeInput) ejeInput.value = '';
         const canalesInput = document.getElementById(`canalesPersonalizado-${producto.id}`);
         if (canalesInput) canalesInput.value = '';
+        
+        if (esPedidoEspecial) {
+            alert('📝 Pedido especial registrado. El administrador asignará el precio cuando procese el pedido.');
+        }
     }
-    // Caso: Metales (categoría 2)
     else if (categoriaId === 2 && producto.unidad_medida === 'kg') {
         const input = document.getElementById(`medida-${producto.id}`);
         const peso = parseFloat(input?.value);
@@ -345,9 +402,8 @@ function agregarAlCarritoConMedidas(producto) {
         especificaciones = { peso_kg: peso };
     }
     
-    agregarAlCarrito(producto, cantidad, especificaciones);
+    agregarAlCarrito(producto, cantidad, especificaciones, esPedidoEspecial ? 0 : precioFinal);
     
-    // Limpiar campos normales
     const inputNormal = document.getElementById(`medida-${producto.id}`);
     if (inputNormal) inputNormal.value = '';
 }
@@ -373,6 +429,9 @@ function actualizarCarrito() {
         if (item.especificaciones) {
             if (item.especificaciones.tipo_correa) {
                 especHtml = `<small style="color:#666;">⚙️ Correa: ${item.especificaciones.tipo_correa} | Eje: ${item.especificaciones.diametro_eje_mm}mm | Canales: ${item.especificaciones.num_canales}</small><br>`;
+                if (item.esPedidoEspecial) {
+                    especHtml += `<small style="color:#dc3545;">📝 Pedido especial - Precio a cotizar</small><br>`;
+                }
             } else if (item.especificaciones.peso_kg) {
                 especHtml = `<small style="color:#666;">⚖️ ${item.especificaciones.peso_kg} kg</small><br>`;
             } else if (item.especificaciones.medidas) {
@@ -389,13 +448,14 @@ function actualizarCarrito() {
         }
         
         const cantidadStr = (item.cantidad % 1 !== 0) ? item.cantidad.toFixed(2) : item.cantidad;
+        const precioStr = item.precio === 0 ? 'Por cotizar' : `Bs ${item.precio.toFixed(2)}`;
         
         return `
             <div class="carrito-item">
                 <div style="flex: 2;">
                     <strong>${item.nombre}</strong><br>
                     ${especHtml}
-                    <small>Bs ${item.precio.toFixed(2)} c/u</small>
+                    <small>${precioStr} c/u</small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <button class="btn" style="background: #dc3545; padding: 0.2rem 0.5rem;" onclick="cambiarCantidad(${idx}, ${item.cantidad - 1})">-</button>
@@ -407,7 +467,7 @@ function actualizarCarrito() {
         `;
     }).join('');
     
-    totalDiv.innerHTML = `Total: Bs ${total.toFixed(2)}`;
+    totalDiv.innerHTML = `Total: ${total === 0 ? 'Por cotizar' : `Bs ${total.toFixed(2)}`}`;
 }
 
 function cambiarCantidad(idx, nuevaCantidad) {
@@ -430,7 +490,6 @@ async function realizarPedido() {
     const direccion = document.getElementById('direccionCliente')?.value.trim();
     const notas = document.getElementById('notasPedido')?.value.trim();
     
-    // Capturar opciones de entrega (si es cliente frecuente)
     let tipoEntrega = 'retiro_taller';
     let direccionEnvio = null;
     
@@ -450,13 +509,18 @@ async function realizarPedido() {
     }
     
     const total = carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    const requiereCotizacion = carrito.some(item => item.precio === 0 || item.esPedidoEspecial === true);
     
     let mensajeEntrega = '';
     if (tipoEntrega === 'retiro_taller') mensajeEntrega = '📦 Retiro en taller';
     else if (tipoEntrega === 'envio_domicilio') mensajeEntrega = `🚚 Envío a domicilio${direccionEnvio ? `\nDirección: ${direccionEnvio}` : ''}`;
     else mensajeEntrega = '🏪 Entrega en tienda';
     
-    if (!confirm(`¿Confirmar pedido por Bs ${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\n${mensajeEntrega}\nProductos: ${carrito.length} ítems`)) {
+    const mensajeConfirmacion = requiereCotizacion 
+        ? `⚠️ Este pedido contiene productos especiales.\nEl precio será cotizado por el administrador.\n\nCliente: ${nombre}\nTeléfono: ${telefono}\n${mensajeEntrega}\nProductos: ${carrito.length} ítems`
+        : `¿Confirmar pedido por Bs ${total.toFixed(2)}?\n\nCliente: ${nombre}\nTeléfono: ${telefono}\n${mensajeEntrega}\nProductos: ${carrito.length} ítems`;
+    
+    if (!confirm(mensajeConfirmacion)) {
         return;
     }
     
@@ -469,13 +533,15 @@ async function realizarPedido() {
             .insert([{
                 codigo: codigo,
                 cliente_id: clienteId,
-                estado: 'pendiente',
+                estado: requiereCotizacion ? 'pendiente' : 'pendiente',
                 total: total,
                 adelanto_monto: 0,
                 adelanto_confirmado: false,
                 tipo_entrega: tipoEntrega,
                 direccion_envio: direccionEnvio,
-                notas: notas || null
+                notas: notas || null,
+                requiere_cotizacion: requiereCotizacion,
+                precio_asignado_manual: null
             }])
             .select();
         
@@ -490,6 +556,7 @@ async function realizarPedido() {
             if (item.especificaciones) {
                 if (item.especificaciones.tipo_correa) {
                     descripcionExtra = ` (Correa: ${item.especificaciones.tipo_correa}, Eje: ${item.especificaciones.diametro_eje_mm}mm, Canales: ${item.especificaciones.num_canales})`;
+                    if (item.esPedidoEspecial) descripcionExtra += ' [PEDIDO ESPECIAL - COTIZAR]';
                 } else if (item.especificaciones.peso_kg) {
                     descripcionExtra = ` (${item.especificaciones.peso_kg} kg)`;
                 } else if (item.especificaciones.medidas) {
@@ -516,7 +583,11 @@ async function realizarPedido() {
             }]);
         }
         
-        alert(`✅ ¡Pedido realizado con éxito!\n\n📋 Código de seguimiento: ${codigo}\n\nGuarda este código para consultar el estado de tu pedido.`);
+        const mensajeFinal = requiereCotizacion
+            ? `✅ ¡Pedido especial registrado!\n\n📋 Código de seguimiento: ${codigo}\n\nEl administrador asignará el precio y te notificará.\n\nGuarda este código para consultar el estado.`
+            : `✅ ¡Pedido realizado con éxito!\n\n📋 Código de seguimiento: ${codigo}\n\nGuarda este código para consultar el estado de tu pedido.`;
+        
+        alert(mensajeFinal);
         
         carrito = [];
         actualizarCarrito();
@@ -555,6 +626,5 @@ async function buscarOCrearCliente(nombre, telefono, direccion) {
     return nuevo[0].id;
 }
 
-// Exponer funciones globalmente
 window.cambiarCantidad = cambiarCantidad;
 window.eliminarDelCarrito = eliminarDelCarrito;
