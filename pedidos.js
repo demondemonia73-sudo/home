@@ -1,9 +1,89 @@
 // ============================================
-// MÓDULO DE PEDIDOS (ADMIN)
+// MÓDULO DE PEDIDOS (ADMIN + CONSULTA CLIENTE)
 // ============================================
 
 let pedidosData = [];
 let filtroEstado = 'todos';
+
+// ============================================
+// CONSULTA DE PEDIDO (CLIENTE - desde index.html)
+// ============================================
+
+async function consultarPedido() {
+    const codigo = document.getElementById('consultaCodigo').value.trim();
+    const telefono = document.getElementById('consultaTelefono').value.trim();
+    const resultadoDiv = document.getElementById('resultadoConsulta');
+    
+    if (!codigo || !telefono) {
+        resultadoDiv.innerHTML = '<div class="alert alert-danger">Ingresa código y teléfono</div>';
+        return;
+    }
+    
+    try {
+        const { data: pedido, error } = await db
+            .from('pedidos')
+            .select('*, clientes(*)')
+            .eq('codigo', codigo)
+            .maybeSingle();
+        
+        if (error || !pedido) {
+            resultadoDiv.innerHTML = '<div class="alert alert-danger">Pedido no encontrado</div>';
+            return;
+        }
+        
+        if (pedido.clientes?.telefono !== telefono) {
+            resultadoDiv.innerHTML = '<div class="alert alert-danger">Teléfono incorrecto</div>';
+            return;
+        }
+        
+        const estadoText = {
+            'pendiente': '⏳ Pendiente - Esperando asignación',
+            'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
+            'terminado': '✅ Terminado - Listo para retirar',
+            'entregado': '📦 Entregado'
+        };
+        
+        // Obtener detalles del pedido
+        const { data: detalles } = await db
+            .from('detalle_pedido')
+            .select('*')
+            .eq('pedido_id', pedido.id);
+        
+        let detallesHtml = '<h4>📋 Detalle del pedido:</h4><ul>';
+        if (detalles && detalles.length > 0) {
+            detalles.forEach(d => {
+                detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - $${d.subtotal.toFixed(2)}</li>`;
+            });
+        } else {
+            detallesHtml += '<li>Sin productos registrados</li>';
+        }
+        detallesHtml += '</ul>';
+        
+        resultadoDiv.innerHTML = `
+            <div class="card" style="margin-top: 1rem; border-left: 4px solid #1a73e8;">
+                <h3>📄 Pedido ${pedido.codigo}</h3>
+                <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                <p><strong>📌 Estado:</strong> <span class="badge badge-${pedido.estado}">${estadoText[pedido.estado] || pedido.estado}</span></p>
+                ${detallesHtml}
+                <p><strong>💰 Total:</strong> <strong style="color: #28a745;">$${pedido.total.toFixed(2)}</strong></p>
+                ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos al teléfono del taller para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
+            </div>
+        `;
+        
+    } catch (err) {
+        resultadoDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+}
+
+// Redirigir a la tienda para hacer nuevo pedido
+function mostrarNuevoPedidoForm() {
+    window.location.href = 'tienda.html';
+}
+
+// ============================================
+// GESTIÓN DE PEDIDOS (ADMIN)
+// ============================================
 
 async function cargarPedidos() {
     if (!verificarSesion()) return;
@@ -114,13 +194,6 @@ async function refrescarListaPedidos() {
                 .select('*')
                 .eq('pedido_id', p.id);
             
-            const estadoOptions = {
-                'pendiente': '⏳ Pendiente',
-                'en_proceso': '⚙️ En proceso',
-                'terminado': '✅ Terminado',
-                'entregado': '📦 Entregado'
-            };
-            
             html += `
                 <tr>
                     <td><strong>${p.codigo}</strong></td>
@@ -216,24 +289,9 @@ async function verDetallePedido(id) {
         .select('*')
         .eq('pedido_id', id);
     
-    let detallesHtml = detalles?.map(d => `
-        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee;">
-            <span>${d.cantidad} x ${d.descripcion}</span>
-            <span style="color: #28a745;">$${d.subtotal.toFixed(2)}</span>
-        </div>
-    `).join('') || '<p>Sin productos</p>';
+    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = $${d.subtotal.toFixed(2)}`).join('\n') || 'Sin productos';
     
-    alert(`
-📄 PEDIDO ${pedido.codigo}
-━━━━━━━━━━━━━━━━━━━━━━
-Cliente: ${pedido.clientes?.nombre}
-Teléfono: ${pedido.clientes?.telefono}
-Estado: ${pedido.estado}
-Total: $${pedido.total}
-━━━━━━━━━━━━━━━━━━━━━━
-Productos:
-${detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = $${d.subtotal}`).join('\n')}
-    `);
+    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}\nTotal: $${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}`);
 }
 
 function generarPDFPedido(id) {
