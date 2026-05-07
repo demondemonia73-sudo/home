@@ -32,7 +32,7 @@ async function cargarTrabajadores() {
                         <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña" style="flex: 1; filter: blur(4px); transition: filter 0.2s;">
                         <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️</button>
                     </div>
-                    <small class="text-muted">Haz clic en el ojo para mostrar/ocultar la contraseña. La contraseña se ve borrosa hasta que la reveles.</small>
+                    <small class="text-muted">Haz clic en el ojo para mostrar/ocultar la contraseña.</small>
                 </div>
                 <div class="form-group">
                     <label>Áreas de trabajo</label>
@@ -72,7 +72,6 @@ async function cargarTrabajadores() {
                 toggleBtn.textContent = '👁️';
             }
         };
-        // Inicialmente borrosa
         passwordInput.style.filter = 'blur(4px)';
     }
     
@@ -284,6 +283,19 @@ async function resetearPassword(id, nombre) {
     }
 }
 
+function revelePassword(id, passwordReal) {
+    const span = document.getElementById(`pass-${id}`);
+    if (!span) return;
+    
+    span.textContent = passwordReal;
+    span.style.filter = 'blur(0px)';
+    
+    setTimeout(() => {
+        span.textContent = '••••••';
+        span.style.filter = 'blur(4px)';
+    }, 5000);
+}
+
 async function refrescarListaTrabajadores() {
     const listaDiv = document.getElementById('listaTrabajadores');
     listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
@@ -334,8 +346,8 @@ async function refrescarListaTrabajadores() {
                     <td><strong>${t.nombre}</strong></td>
                     <td>${t.email}</td>
                     <td style="position: relative;">
-                        <span style="filter: blur(4px); cursor: pointer;" onclick="this.style.filter='blur(0px)'; setTimeout(()=>{this.style.filter='blur(4px)'}, 3000);">••••••</span>
-                        <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
+                        <span id="pass-${t.id}" style="filter: blur(4px); cursor: pointer;" onclick="revelePassword(${t.id}, '${t.password_visible.replace(/'/g, "\\'")}')">••••••</span>
+                        <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem; margin-left: 0.5rem;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
                     </td
                     <td><small>${areasNombres}</small></td>
                     <td>
@@ -367,7 +379,9 @@ async function refrescarListaTrabajadores() {
     }
 }
 
+// Exponer funciones globalmente
 window.editarTrabajador = editarTrabajador;
 window.toggleActivoTrabajador = toggleActivoTrabajador;
 window.resetearPassword = resetearPassword;
 window.cargarTrabajadores = cargarTrabajadores;
+window.revelePassword = revelePassword;
