@@ -4,7 +4,7 @@
 
 let pedidosDisponibles = [];
 let misPedidos = [];
-let filtroEstado = 'todos';
+let filtroEstadoTrabajador = 'todos';
 let areasTrabajador = [];
 
 // Cargar panel del trabajador
@@ -38,23 +38,27 @@ async function cargarPanelTrabajador() {
     `;
     
     // Estilos para pestañas internas
-    const style = document.createElement('style');
-    style.textContent = `
-        .tab-btn-interno {
-            background: #e0e0e0;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-        .tab-btn-interno.active {
-            background: #1a73e8;
-            color: white;
-        }
-    `;
-    document.head.appendChild(style);
+    let style = document.querySelector('#panelTrabajadorStyle');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'panelTrabajadorStyle';
+        style.textContent = `
+            .tab-btn-interno {
+                background: #e0e0e0;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: all 0.3s;
+            }
+            .tab-btn-interno.active {
+                background: #1a73e8;
+                color: white;
+            }
+        `;
+        document.head.appendChild(style);
+    }
     
     // Asignar eventos
     document.getElementById('btnRefrescar').onclick = () => cargarVistaActual();
@@ -109,10 +113,10 @@ async function cargarAreasTrabajador() {
 
 async function cargarPedidosDisponibles() {
     const container = document.getElementById('listaPedidosTrabajador');
+    if (!container) return;
     container.innerHTML = '<div class="loading">Cargando pedidos disponibles...</div>';
     
     try {
-        // Obtener IDs de las áreas del trabajador
         const areasIds = areasTrabajador.map(a => a.id);
         
         if (areasIds.length === 0) {
@@ -120,7 +124,6 @@ async function cargarPedidosDisponibles() {
             return;
         }
         
-        // Buscar pedidos pendientes de las áreas del trabajador
         const { data, error } = await db
             .from('pedidos')
             .select('*, clientes(nombre, telefono), detalle_pedido(*)')
@@ -156,7 +159,7 @@ async function cargarPedidosDisponibles() {
         for (const p of pedidosDisponibles) {
             const detalles = p.detalle_pedido || [];
             const productosHtml = detalles.map(d => `
-                <div style="font-size: 0.75rem;">${d.cantidad} x ${d.descripcion.substring(0, 50)}</div>
+                <div style="font-size: 0.75rem;">${d.cantidad} x ${d.descripcion?.substring(0, 40) || ''}${d.descripcion?.length > 40 ? '...' : ''}</div>
             `).join('');
             
             html += `
@@ -164,7 +167,7 @@ async function cargarPedidosDisponibles() {
                     <td><strong>${p.codigo}</strong></td>
                     <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
                     <td>${productosHtml || 'Sin productos'}</td>
-                    <td><strong style="color: #28a745;">Bs ${p.total.toFixed(2)}</strong></td>
+                    <td><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
                     <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
                     <td>
                         <button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="tomarPedido(${p.id}, '${p.codigo}')">📋 Tomar Pedido</button>
@@ -173,7 +176,7 @@ async function cargarPedidosDisponibles() {
             `;
         }
         
-        html += `</tbody></table></div>`;
+        html += `</tbody> FullEDMFunc</div>`;
         container.innerHTML = html;
         
     } catch (err) {
@@ -183,17 +186,17 @@ async function cargarPedidosDisponibles() {
 
 async function cargarMisPedidos() {
     const container = document.getElementById('listaPedidosTrabajador');
+    if (!container) return;
     container.innerHTML = '<div class="loading">Cargando mis pedidos...</div>';
     
     try {
-        // Buscar pedidos asignados al trabajador
         let query = db
             .from('pedidos')
             .select('*, clientes(nombre, telefono), detalle_pedido(*)')
             .eq('asignado_a', AppState.currentUser.id);
         
-        if (filtroEstado !== 'todos') {
-            query = query.eq('estado', filtroEstado);
+        if (filtroEstadoTrabajador !== 'todos') {
+            query = query.eq('estado', filtroEstadoTrabajador);
         }
         
         const { data, error } = await query.order('created_at', { ascending: false });
@@ -214,11 +217,10 @@ async function cargarMisPedidos() {
             return;
         }
         
-        // Filtros de estado para el trabajador
         let filtrosHtml = `
             <div style="background: #f8f9fa; padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                 <strong>📌 Filtrar:</strong>
-                <button id="filtroTodos" class="btn-filtro-trabajador" data-estado="todos" style="padding: 0.2rem 0.6rem; border-radius: 15px; border: none; cursor: pointer; background: #1a73e8; color: white;">Todos</button>
+                <button id="filtroTodosTra" class="btn-filtro-trabajador" data-estado="todos" style="padding: 0.2rem 0.6rem; border-radius: 15px; border: none; cursor: pointer; background: #1a73e8; color: white;">Todos</button>
                 <button id="filtroAsignado" class="btn-filtro-trabajador" data-estado="asignado" style="padding: 0.2rem 0.6rem; border-radius: 15px; border: 1px solid #ddd; cursor: pointer;">📋 Asignados</button>
                 <button id="filtroProgreso" class="btn-filtro-trabajador" data-estado="en_progreso" style="padding: 0.2rem 0.6rem; border-radius: 15px; border: 1px solid #ddd; cursor: pointer;">⚙️ En progreso</button>
                 <button id="filtroTerminado" class="btn-filtro-trabajador" data-estado="terminado" style="padding: 0.2rem 0.6rem; border-radius: 15px; border: 1px solid #ddd; cursor: pointer;">✅ Terminados</button>
@@ -246,24 +248,16 @@ async function cargarMisPedidos() {
             const detalles = p.detalle_pedido || [];
             const productosHtml = detalles.map(d => `
                 <div style="font-size: 0.75rem; border-bottom: 1px solid #eee; padding: 2px 0;">
-                    ${d.cantidad} x ${d.descripcion.substring(0, 40)}${d.descripcion.length > 40 ? '...' : ''}
+                    ${d.cantidad} x ${d.descripcion?.substring(0, 35) || ''}${d.descripcion?.length > 35 ? '...' : ''}
                 </div>
             `).join('');
-            
-            const estadoOptions = {
-                'pendiente': '⏳ Pendiente',
-                'asignado': '📋 Asignado',
-                'en_progreso': '⚙️ En progreso',
-                'terminado': '✅ Terminado',
-                'entregado': '📦 Entregado'
-            };
             
             html += `
                 <tr>
                     <td><strong>${p.codigo}</strong></td>
                     <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
                     <td>${productosHtml || 'Sin productos'}</td>
-                    <td><strong style="color: #28a745;">Bs ${p.total.toFixed(2)}</strong></td>
+                    <td><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
                     <td>
                         <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 0.2rem;" onchange="cambiarEstadoPedidoTrabajador(${p.id}, this.value)">
                             <option value="asignado" ${p.estado === 'asignado' ? 'selected' : ''}>📋 Asignado</option>
@@ -279,26 +273,29 @@ async function cargarMisPedidos() {
                         <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.5rem; margin-bottom: 0.2rem;" onclick="verDetallePedidoTrabajador(${p.id})">👁️ Ver</button>
                         ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.5rem;" onclick="generarReciboPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
-                </td>
+                </tr>
             `;
         }
         
         html += `</tbody></table></div>`;
         container.innerHTML = html;
         
-        // Asignar eventos de filtros
-        document.getElementById('filtroTodos')?.addEventListener('click', () => aplicarFiltroTrabajador('todos'));
-        document.getElementById('filtroAsignado')?.addEventListener('click', () => aplicarFiltroTrabajador('asignado'));
-        document.getElementById('filtroProgreso')?.addEventListener('click', () => aplicarFiltroTrabajador('en_progreso'));
-        document.getElementById('filtroTerminado')?.addEventListener('click', () => aplicarFiltroTrabajador('terminado'));
+        const btnTodos = document.getElementById('filtroTodosTra');
+        if (btnTodos) {
+            btnTodos.onclick = () => aplicarFiltroTrabajador('todos');
+            document.getElementById('filtroAsignado')?.addEventListener('click', () => aplicarFiltroTrabajador('asignado'));
+            document.getElementById('filtroProgreso')?.addEventListener('click', () => aplicarFiltroTrabajador('en_progreso'));
+            document.getElementById('filtroTerminado')?.addEventListener('click', () => aplicarFiltroTrabajador('terminado'));
+        }
         
     } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        console.error('Error cargando mis pedidos:', err);
+        if (container) container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
     }
 }
 
 function aplicarFiltroTrabajador(estado) {
-    filtroEstado = estado;
+    filtroEstadoTrabajador = estado;
     
     document.querySelectorAll('.btn-filtro-trabajador').forEach(btn => {
         btn.style.background = '#f0f0f0';
@@ -307,7 +304,7 @@ function aplicarFiltroTrabajador(estado) {
     });
     
     const btnMap = {
-        'todos': 'filtroTodos',
+        'todos': 'filtroTodosTra',
         'asignado': 'filtroAsignado',
         'en_progreso': 'filtroProgreso',
         'terminado': 'filtroTerminado'
@@ -420,7 +417,7 @@ async function verDetallePedidoTrabajador(id) {
         .select('*')
         .eq('pedido_id', id);
     
-    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal.toFixed(2)}`).join('\n') || 'Sin productos';
+    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal?.toFixed(2) || '0.00'}`).join('\n') || 'Sin productos';
     
     alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nDirección: ${pedido.clientes?.direccion || 'N/A'}\nEstado: ${pedido.estado}\nTotal: Bs ${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}`);
 }
@@ -436,3 +433,4 @@ window.cambiarEstadoPedidoTrabajador = cambiarEstadoPedidoTrabajador;
 window.verDetallePedidoTrabajador = verDetallePedidoTrabajador;
 window.generarReciboPedido = generarReciboPedido;
 window.cargarPedidosDisponibles = cargarPedidosDisponibles;
+window.cargarPanelTrabajador = cargarPanelTrabajador;
