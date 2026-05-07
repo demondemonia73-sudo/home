@@ -1,1 +1,65 @@
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Verificar Credenciales Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h2>🔧 Verificador de Credenciales</h2>
+    <div id="resultado"></div>
+    
+    <script>
+        // =====================================================
+        // MODIFICA ESTOS DATOS CON LOS DE TU PROYECTO
+        // =====================================================
+        const SUPABASE_URL = 'https://iyanyiihgjnnlcjapnge.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_gxx8Bo4xtnPcCHWTooE3fA_yE9j1cIz';
+        
+        const resultado = document.getElementById('resultado');
+        
+        async function verificar() {
+            resultado.innerHTML = '🔄 Conectando a Supabase...';
+            
+            const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            try {
+                // Intentar leer usuarios
+                const { data, error } = await supabase
+                    .from('usuarios')
+                    .select('*');
+                
+                if (error) {
+                    resultado.innerHTML = `
+                        <h3 style="color: red;">❌ ERROR DE CONEXIÓN</h3>
+                        <p><strong>Mensaje:</strong> ${error.message}</p>
+                        <p><strong>Código:</strong> ${error.code || 'N/A'}</p>
+                        <p><strong>¿Qué significa?</strong></p>
+                        <ul>
+                            <li>Si dice "No API key found" → La ANON KEY es incorrecta</li>
+                            <li>Si dice "relation does not exist" → La tabla 'usuarios' no existe</li>
+                            <li>Si dice "Invalid API key" → La URL o KEY son de otro proyecto</li>
+                        </ul>
+                    `;
+                    return;
+                }
+                
+                resultado.innerHTML = `
+                    <h3 style="color: green;">✅ CONEXIÓN EXITOSA</h3>
+                    <p><strong>Tabla 'usuarios':</strong> ${data.length} registros encontrados</p>
+                    <p><strong>Datos:</strong></p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+            } catch (err) {
+                resultado.innerHTML = `
+                    <h3 style="color: red;">❌ ERROR INESPERADO</h3>
+                    <p>${err.message}</p>
+                `;
+            }
+        }
+        
+        verificar();
+    </script>
+</body>
+</html>
