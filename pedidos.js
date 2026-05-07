@@ -43,7 +43,6 @@ async function consultarPedido() {
             'entregado': '📦 Entregado'
         };
         
-        // Obtener detalles del pedido
         const { data: detalles } = await db
             .from('detalle_pedido')
             .select('*')
@@ -67,7 +66,7 @@ async function consultarPedido() {
                 <p><strong>📌 Estado:</strong> <span class="badge badge-${pedido.estado}">${estadoText[pedido.estado] || pedido.estado}</span></p>
                 ${detallesHtml}
                 <p><strong>💰 Total:</strong> <strong style="color: #28a745;">$${pedido.total.toFixed(2)}</strong></p>
-                ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos al teléfono del taller para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
+                ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
             </div>
         `;
         
@@ -76,7 +75,6 @@ async function consultarPedido() {
     }
 }
 
-// Redirigir a la tienda para hacer nuevo pedido
 function mostrarNuevoPedidoForm() {
     window.location.href = 'tienda.html';
 }
@@ -96,7 +94,6 @@ async function cargarPedidos() {
                 <button id="btnRefrescarPedidos" class="btn btn-primary">🔄 Refrescar</button>
             </div>
             
-            <!-- Filtros -->
             <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                 <strong>📌 Filtrar por estado:</strong>
                 <button id="filtroTodos" class="btn-filtro-pedido" data-estado="todos" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: none; cursor: pointer; background: #1a73e8; color: white;">Todos</button>
@@ -106,14 +103,12 @@ async function cargarPedidos() {
                 <button id="filtroEntregado" class="btn-filtro-pedido" data-estado="entregado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">📦 Entregados</button>
             </div>
             
-            <!-- Lista de pedidos -->
             <div id="listaPedidos">
                 <div class="loading">Cargando pedidos...</div>
             </div>
         </div>
     `;
     
-    // Asignar eventos de filtros
     document.getElementById('filtroTodos').onclick = () => aplicarFiltro('todos');
     document.getElementById('filtroPendiente').onclick = () => aplicarFiltro('pendiente');
     document.getElementById('filtroProceso').onclick = () => aplicarFiltro('en_proceso');
@@ -127,7 +122,6 @@ async function cargarPedidos() {
 function aplicarFiltro(estado) {
     filtroEstado = estado;
     
-    // Actualizar estilos
     document.querySelectorAll('.btn-filtro-pedido').forEach(btn => {
         btn.style.background = '#f0f0f0';
         btn.style.color = '#333';
@@ -159,7 +153,6 @@ async function refrescarListaPedidos() {
         }
         
         const { data, error } = await query;
-        
         if (error) throw error;
         
         pedidosData = data || [];
@@ -169,30 +162,10 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        let html = `
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Cliente</th>
-                            <th>Teléfono</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                            <th>Adelanto</th>
-                            <th>Fecha</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        let html = `<div class="table-container"><table><thead><tr><th>Código</th><th>Cliente</th><th>Teléfono</th><th>Total</th><th>Estado</th><th>Adelanto</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>`;
         
         for (const p of pedidosData) {
-            // Obtener detalles del pedido
-            const { data: detalles } = await db
-                .from('detalle_pedido')
-                .select('*')
-                .eq('pedido_id', p.id);
+            const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', p.id);
             
             html += `
                 <tr>
@@ -208,40 +181,20 @@ async function refrescarListaPedidos() {
                             <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
                         </select>
                     </td>
-                    <td>
-                        ${p.adelanto_monto > 0 ? `<span style="color: #17a2b8;">$${p.adelanto_monto}</span><br>
-                        <small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}
-                    </td>
+                    <td>${p.adelanto_monto > 0 ? `$${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
                     <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
                     <td>
                         <button class="btn" style="background: #17a2b8; padding: 0.3rem 0.6rem;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
                         ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
                 </tr>
-                <tr style="background: #f9f9f9;">
-                    <td colspan="8">
-                        <details>
-                            <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
-                            <div style="margin-top: 0.5rem; padding-left: 1rem;">
-                                ${detalles?.map(d => `
-                                    <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee;">
-                                        <span>${d.cantidad} x ${d.descripcion}</span>
-                                        <span style="color: #28a745;">$${d.subtotal.toFixed(2)}</span>
-                                    </div>
-                                `).join('') || '<span>Sin productos</span>'}
-                            </div>
-                        </details>
-                    </td>
-                </tr>
+                <tr style="background: #f9f9f9;"><td colspan="8"><details><summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary><div style="margin-top: 0.5rem; padding-left: 1rem;">
+                    ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">$${d.subtotal.toFixed(2)}</span></div>`).join('') || '<span>Sin productos</span>'}
+                </div></details></td></tr>
             `;
         }
         
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
+        html += `</tbody></table></div>`;
         listaDiv.innerHTML = html;
         
     } catch (err) {
@@ -252,48 +205,29 @@ async function refrescarListaPedidos() {
 
 async function cambiarEstadoPedido(id, nuevoEstado) {
     try {
-        const { error } = await db
-            .from('pedidos')
-            .update({ estado: nuevoEstado })
-            .eq('id', id);
-        
+        const { error } = await db.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
         if (error) throw error;
-        
-        // Si el estado es terminado, registrar fecha
         if (nuevoEstado === 'terminado') {
             await db.from('pedidos').update({ fecha_terminado: new Date() }).eq('id', id);
         }
-        
         alert('✅ Estado actualizado');
         await refrescarListaPedidos();
-        
     } catch (err) {
         alert('❌ Error: ' + err.message);
     }
 }
 
 async function verDetallePedido(id) {
-    const { data: pedido, error } = await db
-        .from('pedidos')
-        .select('*, clientes(*)')
-        .eq('id', id)
-        .single();
-    
-    if (error) {
-        alert('Error al cargar detalle');
-        return;
-    }
-    
-    const { data: detalles } = await db
-        .from('detalle_pedido')
-        .select('*')
-        .eq('pedido_id', id);
-    
+    const { data: pedido } = await db.from('pedidos').select('*, clientes(*)').eq('id', id).single();
+    const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', id);
     let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = $${d.subtotal.toFixed(2)}`).join('\n') || 'Sin productos';
-    
     alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}\nTotal: $${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}`);
 }
 
 function generarPDFPedido(id) {
     alert(`📄 Generando PDF del pedido #${id}...\n(Funcionalidad en desarrollo)`);
 }
+
+// Exponer funciones globalmente para que main.js las encuentre
+window.consultarPedido = consultarPedido;
+window.mostrarNuevoPedidoForm = mostrarNuevoPedidoForm;
