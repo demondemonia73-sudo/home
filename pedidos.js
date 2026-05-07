@@ -36,13 +36,6 @@ async function consultarPedido() {
             return;
         }
         
-        const estadoText = {
-            'pendiente': '⏳ Pendiente - Esperando asignación',
-            'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
-            'terminado': '✅ Terminado - Listo para retirar',
-            'entregado': '📦 Entregado'
-        };
-        
         const { data: detalles } = await db
             .from('detalle_pedido')
             .select('*')
@@ -51,12 +44,51 @@ async function consultarPedido() {
         let detallesHtml = '<h4>📋 Detalle del pedido:</h4><ul>';
         if (detalles && detalles.length > 0) {
             detalles.forEach(d => {
-                detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - $${d.subtotal.toFixed(2)}</li>`;
+                detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - Bs ${d.subtotal.toFixed(2)}</li>`;
             });
         } else {
             detallesHtml += '<li>Sin productos registrados</li>';
         }
         detallesHtml += '</ul>';
+        
+        // Mostrar mensaje especial si el pedido fue rechazado
+        if (pedido.estado === 'rechazado') {
+            resultadoDiv.innerHTML = `
+                <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
+                    <h3>📄 Pedido ${pedido.codigo}</h3>
+                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #dc3545; color: white;">❌ Rechazado</span></p>
+                    <p><strong>⚠️ Motivo del rechazo:</strong> ${pedido.motivo_rechazo || 'No especificado'}</p>
+                    <p><strong>📅 Fecha de rechazo:</strong> ${pedido.fecha_rechazo ? new Date(pedido.fecha_rechazo).toLocaleString() : 'N/A'}</p>
+                    ${detallesHtml}
+                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
+                    <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
+                </div>
+            `;
+            return;
+        }
+        
+        const estadoText = {
+            'pendiente': '⏳ Pendiente - Esperando asignación',
+            'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
+            'terminado': '✅ Terminado - Listo para retirar',
+            'entregado': '📦 Entregado'
+        };
+        
+        // Mostrar tipo de entrega si existe
+        let entregaHtml = '';
+        if (pedido.tipo_entrega) {
+            const entregaText = {
+                'retiro_taller': '📦 Retiro en taller',
+                'envio_domicilio': '🚚 Envío a domicilio',
+                'entrega_tienda': '🏪 Entrega en tienda'
+            };
+            entregaHtml = `<p><strong>🚚 Entrega:</strong> ${entregaText[pedido.tipo_entrega] || pedido.tipo_entrega}</p>`;
+            if (pedido.direccion_envio) {
+                entregaHtml += `<p><strong>📍 Dirección de envío:</strong> ${pedido.direccion_envio}</p>`;
+            }
+        }
         
         resultadoDiv.innerHTML = `
             <div class="card" style="margin-top: 1rem; border-left: 4px solid #1a73e8;">
@@ -64,8 +96,9 @@ async function consultarPedido() {
                 <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
                 <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
                 <p><strong>📌 Estado:</strong> <span class="badge badge-${pedido.estado}">${estadoText[pedido.estado] || pedido.estado}</span></p>
+                ${entregaHtml}
                 ${detallesHtml}
-                <p><strong>💰 Total:</strong> <strong style="color: #28a745;">$${pedido.total.toFixed(2)}</strong></p>
+                <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
                 ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
             </div>
         `;
@@ -101,6 +134,7 @@ async function cargarPedidos() {
                 <button id="filtroProceso" class="btn-filtro-pedido" data-estado="en_proceso" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">⚙️ En proceso</button>
                 <button id="filtroTerminado" class="btn-filtro-pedido" data-estado="terminado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">✅ Terminados</button>
                 <button id="filtroEntregado" class="btn-filtro-pedido" data-estado="entregado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">📦 Entregados</button>
+                <button id="filtroRechazado" class="btn-filtro-pedido" data-estado="rechazado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">❌ Rechazados</button>
             </div>
             
             <div id="listaPedidos">
@@ -114,6 +148,7 @@ async function cargarPedidos() {
     document.getElementById('filtroProceso').onclick = () => aplicarFiltro('en_proceso');
     document.getElementById('filtroTerminado').onclick = () => aplicarFiltro('terminado');
     document.getElementById('filtroEntregado').onclick = () => aplicarFiltro('entregado');
+    document.getElementById('filtroRechazado').onclick = () => aplicarFiltro('rechazado');
     document.getElementById('btnRefrescarPedidos').onclick = () => refrescarListaPedidos();
     
     await refrescarListaPedidos();
@@ -128,7 +163,16 @@ function aplicarFiltro(estado) {
         btn.style.border = '1px solid #ddd';
     });
     
-    const btnActivo = document.getElementById(`filtro${estado === 'todos' ? 'Todos' : estado === 'en_proceso' ? 'Proceso' : estado.charAt(0).toUpperCase() + estado.slice(1)}`);
+    const btnMap = {
+        'todos': 'filtroTodos',
+        'pendiente': 'filtroPendiente',
+        'en_proceso': 'filtroProceso',
+        'terminado': 'filtroTerminado',
+        'entregado': 'filtroEntregado',
+        'rechazado': 'filtroRechazado'
+    };
+    
+    const btnActivo = document.getElementById(btnMap[estado]);
     if (btnActivo) {
         btnActivo.style.background = '#1a73e8';
         btnActivo.style.color = 'white';
@@ -162,34 +206,49 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        let html = `<div class="table-container"><table><thead><tr><th>Código</th><th>Cliente</th><th>Teléfono</th><th>Total</th><th>Estado</th><th>Adelanto</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody>`;
+        let html = `<div class="table-container"><td><thead>运转
+                <th>Código</th><th>Cliente</th><th>Teléfono</th><th>Total</th><th>Estado</th><th>Entrega</th><th>Adelanto</th><th>Fecha</th><th>Acciones</th>
+            </thead><tbody>`;
         
         for (const p of pedidosData) {
             const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', p.id);
+            
+            const entregaText = {
+                'retiro_taller': '📦 Taller',
+                'envio_domicilio': '🚚 Domicilio',
+                'entrega_tienda': '🏪 Tienda'
+            };
+            const entregaShow = p.tipo_entrega ? entregaText[p.tipo_entrega] || p.tipo_entrega : 'N/A';
+            
+            // Selector de estado con opción de rechazado
+            let estadoSelect = `
+                <select id="estado-${p.id}" class="form-control" style="width: 130px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
+                    <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                    <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
+                    <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
+                    <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
+                    <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
+                </select>
+            `;
             
             html += `
                 <tr>
                     <td><strong>${p.codigo}</strong></td>
                     <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
                     <td>${p.clientes?.telefono || 'N/A'}</td>
-                    <td><strong style="color: #28a745;">$${p.total.toFixed(2)}</strong></td>
-                    <td>
-                        <select id="estado-${p.id}" class="form-control" style="width: 130px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
-                            <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                            <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
-                            <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
-                            <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
-                        </select>
-                    </td>
-                    <td>${p.adelanto_monto > 0 ? `$${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
+                    <td><strong style="color: #28a745;">Bs ${p.total.toFixed(2)}</strong></td>
+                    <td>${estadoSelect}</td>
+                    <td>${entregaShow}</td>
+                    <td>${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
                     <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
                     <td>
                         <button class="btn" style="background: #17a2b8; padding: 0.3rem 0.6rem;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
+                        ${p.estado === 'pendiente' ? `<button class="btn" style="background: #dc3545; padding: 0.3rem 0.6rem; margin-top: 0.2rem;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
                         ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
                 </tr>
-                <tr style="background: #f9f9f9;"><td colspan="8"><details><summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary><div style="margin-top: 0.5rem; padding-left: 1rem;">
-                    ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">$${d.subtotal.toFixed(2)}</span></div>`).join('') || '<span>Sin productos</span>'}
+                <tr style="background: #f9f9f9;"><td colspan="9"><details><summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary><div style="margin-top: 0.5rem; padding-left: 1rem;">
+                    ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">Bs ${d.subtotal.toFixed(2)}</span></div>`).join('') || '<span>Sin productos</span>'}
                 </div></details></td></tr>
             `;
         }
@@ -217,17 +276,72 @@ async function cambiarEstadoPedido(id, nuevoEstado) {
     }
 }
 
+// ============================================
+// NUEVA FUNCIÓN: RECHAZAR PEDIDO
+// ============================================
+
+async function rechazarPedido(id, codigo) {
+    const motivo = prompt(`❌ ¿Por qué rechazas el pedido ${codigo}?\n\nEscribe el motivo para que el cliente lo vea:`);
+    
+    if (!motivo || motivo.trim() === '') {
+        alert('⚠️ Debes ingresar un motivo para rechazar el pedido');
+        return;
+    }
+    
+    if (!confirm(`⚠️ ¿Rechazar el pedido ${codigo}?\n\nMotivo: ${motivo}\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+    
+    try {
+        const { error } = await db
+            .from('pedidos')
+            .update({ 
+                estado: 'rechazado', 
+                motivo_rechazo: motivo.trim(),
+                fecha_rechazo: new Date(),
+                rechazado_por: AppState?.currentUser?.id || null
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        alert(`✅ Pedido ${codigo} rechazado\nMotivo: ${motivo}`);
+        await refrescarListaPedidos();
+        
+    } catch (err) {
+        alert('❌ Error al rechazar: ' + err.message);
+    }
+}
+
 async function verDetallePedido(id) {
     const { data: pedido } = await db.from('pedidos').select('*, clientes(*)').eq('id', id).single();
     const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', id);
-    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = $${d.subtotal.toFixed(2)}`).join('\n') || 'Sin productos';
-    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}\nTotal: $${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}`);
+    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal.toFixed(2)}`).join('\n') || 'Sin productos';
+    
+    let entregaInfo = '';
+    if (pedido.tipo_entrega) {
+        const entregaText = {
+            'retiro_taller': 'Retiro en taller',
+            'envio_domicilio': 'Envío a domicilio',
+            'entrega_tienda': 'Entrega en tienda'
+        };
+        entregaInfo = `\nEntrega: ${entregaText[pedido.tipo_entrega] || pedido.tipo_entrega}`;
+        if (pedido.direccion_envio) entregaInfo += `\nDirección: ${pedido.direccion_envio}`;
+    }
+    
+    let rechazoInfo = '';
+    if (pedido.estado === 'rechazado' && pedido.motivo_rechazo) {
+        rechazoInfo = `\n━━━━━━━━━━━━━━━━━━━━━━\n❌ MOTIVO DEL RECHAZO:\n${pedido.motivo_rechazo}\nFecha: ${new Date(pedido.fecha_rechazo).toLocaleString()}`;
+    }
+    
+    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}${entregaInfo}\nTotal: Bs ${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}${rechazoInfo}`);
 }
 
 function generarPDFPedido(id) {
     alert(`📄 Generando PDF del pedido #${id}...\n(Funcionalidad en desarrollo)`);
 }
 
-// Exponer funciones globalmente para que main.js las encuentre
+// Exponer funciones globalmente
 window.consultarPedido = consultarPedido;
 window.mostrarNuevoPedidoForm = mostrarNuevoPedidoForm;
+window.rechazarPedido = rechazarPedido;
