@@ -67,7 +67,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             'productos': typeof cargarProductos === 'function' ? cargarProductos : () => console.warn('cargarProductos no definida'),
             'clientes': typeof cargarClientes === 'function' ? cargarClientes : () => console.warn('cargarClientes no definida'),
             'trabajadores': typeof cargarTrabajadores === 'function' ? cargarTrabajadores : () => console.warn('cargarTrabajadores no definida'),
-            'reportes': typeof cargarReportes === 'function' ? cargarReportes : () => console.warn('cargarReportes no definida')
+            'reportes': typeof cargarReportes === 'function' ? cargarReportes : () => console.warn('cargarReportes no definida'),
+            'tiposCorrea': typeof cargarTiposCorrea === 'function' ? cargarTiposCorrea : () => console.warn('cargarTiposCorrea no definida')
         };
         
         tabs.forEach(btn => {
