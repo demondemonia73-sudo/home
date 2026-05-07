@@ -1,1 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TallerTotal - Catálogo de Productos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos específicos para la tienda */
+        .catalogo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .producto-tarjeta {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            border: 1px solid #e0e0e0;
+        }
+        .producto-tarjeta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .producto-precio {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+            margin: 0.5rem 0;
+        }
+        .producto-stock {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .btn-carrito {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .btn-carrito:hover {
+            background: #0d47a1;
+        }
+        .btn-carrito:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .carrito {
+            position: sticky;
+            top: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #1a73e8;
+        }
+        .carrito-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .carrito-total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            padding-top: 0.5rem;
+            border-top: 2px solid #1a73e8;
+        }
+        .filtro-categoria {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            background: #e0e0e0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filtro-categoria.active {
+            background: #1a73e8;
+            color: white;
+        }
+        .medidas-especiales {
+            background: #fff3cd;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin: 0.5rem 0;
+        }
+        .medidas-input {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+        .medidas-input input {
+            flex: 1;
+            padding: 0.3rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🔧 TallerTotal - Catálogo de Productos</h1>
+            <div class="user-info">
+                <a href="index.html" style="color: white; text-decoration: none;">🔐 Panel Admin</a>
+            </div>
+        </header>
 
+        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem;">
+            <!-- Columna izquierda: Catálogo -->
+            <div>
+                <div class="card">
+                    <h2>📦 Nuestros Productos</h2>
+                    <div id="filtrosContainer" style="margin: 1rem 0; flex-wrap: wrap; display: flex;"></div>
+                    <div id="catalogoContainer" class="catalogo-grid">
+                        <div class="loading">Cargando productos...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna derecha: Carrito de compras -->
+            <div>
+                <div class="carrito">
+                    <h3>🛒 Pedido Actual</h3>
+                    <div id="carritoItems">
+                        <p class="text-muted">No hay productos agregados</p>
+                    </div>
+                    <div id="carritoTotal" class="carrito-total">Total: $0.00</div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Nombre de la tienda/cliente</label>
+                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Ferretería Central">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono de contacto</label>
+                        <input type="tel" id="telefonoCliente" class="form-control" placeholder="0987654321">
+                    </div>
+                    <div class="form-group">
+                        <label>Dirección de entrega (opcional)</label>
+                        <textarea id="direccionCliente" class="form-control" rows="2" placeholder="Dirección para envío"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Notas adicionales</label>
+                        <textarea id="notasPedido" class="form-control" rows="2" placeholder="Especificaciones adicionales..."></textarea>
+                    </div>
+                    <button id="btnRealizarPedido" class="btn btn-success" style="width: 100%; margin-top: 1rem;">✅ Realizar Pedido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="tienda.js"></script>
+</body>
+</html>
