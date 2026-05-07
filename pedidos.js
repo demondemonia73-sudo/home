@@ -2,6 +2,9 @@
 // MÓDULO DE PEDIDOS
 // ============================================
 
+// Elimino la función mostrarLogin duplicada y uso la de auth.js
+// Las demás funciones quedan igual
+
 async function consultarPedido() {
     const codigo = document.getElementById('consultaCodigo').value.trim();
     const telefono = document.getElementById('consultaTelefono').value.trim();
@@ -56,11 +59,6 @@ async function consultarPedido() {
 
 function mostrarNuevoPedidoForm() {
     alert('📝 Formulario de nuevo pedido en desarrollo.\nPróximamente podrás realizar pedidos directamente desde aquí.');
-}
-
-// Función para mostrar el login desde el panel cliente
-function mostrarLogin() {
-    document.getElementById('loginModal').classList.add('active');
 }
 
 // ============================================
