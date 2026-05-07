@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>TallerTotal Manager - Sistema de Gestión Profesional</title>
-    
-    <!-- Favicon -->
+    <title>TallerTotal Manager - Sistema Profesional</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
     
     <!-- Librerías externas -->
@@ -14,12 +12,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     
-    <!-- Estilos profesionales -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Estilos (misma carpeta, sin subcarpeta) -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <h1>🔧 TallerTotal Manager</h1>
             <div class="user-info">
@@ -28,7 +25,6 @@
             </div>
         </header>
 
-        <!-- Navegación (solo visible cuando hay sesión) -->
         <nav class="tabs" id="tabsContainer" style="display: none;">
             <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
             <button class="tab-btn" data-tab="pedidos">📦 Pedidos</button>
@@ -38,7 +34,6 @@
             <button class="tab-btn" data-tab="reportes">📄 Reportes</button>
         </nav>
 
-        <!-- Panel Cliente (sin login) -->
         <section id="clientePanel">
             <div class="card">
                 <h2>🔍 Consultar mi pedido</h2>
@@ -58,11 +53,9 @@
             <div id="resultadoConsulta"></div>
         </section>
 
-        <!-- Contenido dinámico (dashboard, etc.) -->
         <main id="tabsContent" style="display: none;"></main>
     </div>
 
-    <!-- Modal de Login -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
             <h2>🔐 Iniciar Sesión</h2>
@@ -81,11 +74,11 @@
         </div>
     </div>
 
-    <!-- Script principal -->
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/pedidos.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Scripts (misma carpeta, orden correcto) -->
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="pedidos.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
