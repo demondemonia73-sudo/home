@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Verificar conexión
     const connected = await verificarConexion();
     if (!connected) {
-        console.warn('⚠️ No se pudo conectar con Supabase. Verifica tu conexión a internet.');
+        console.warn('⚠️ No se pudo conectar con Supabase.');
     }
     
     // Asignar eventos a los botones
@@ -16,11 +16,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     const logoutBtn = document.getElementById('logoutBtn');
     const consultarBtn = document.getElementById('consultarBtn');
     const nuevoPedidoBtn = document.getElementById('nuevoPedidoBtn');
+    const mostrarLoginBtn = document.getElementById('mostrarLoginBtn');
     
     if (loginBtn) loginBtn.onclick = login;
     if (logoutBtn) logoutBtn.onclick = logout;
     if (consultarBtn) consultarBtn.onclick = consultarPedido;
     if (nuevoPedidoBtn) nuevoPedidoBtn.onclick = mostrarNuevoPedidoForm;
+    if (mostrarLoginBtn) mostrarLoginBtn.onclick = mostrarLogin;
     
     // Configurar navegación por tabs
     const tabs = document.querySelectorAll('.tab-btn');
