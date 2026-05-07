@@ -2,7 +2,6 @@
 // MÓDULO DE AUTENTICACIÓN
 // ============================================
 
-// Función para cerrar el modal de login (sin hacer logout)
 function cerrarModalLogin() {
     document.getElementById('loginModal').classList.remove('active');
 }
@@ -40,22 +39,19 @@ async function login() {
             return;
         }
         
-        // Login exitoso
         AppState.currentUser = data;
         AppState.currentUserRole = data.rol;
         AppState.currentUserName = data.nombre;
         AppState.isLoggedIn = true;
         
-        // Actualizar UI
-        cerrarModalLogin(); // Cierra el modal de login
+        cerrarModalLogin();
         document.getElementById('userNameDisplay').textContent = `👋 ${AppState.currentUserName} (${AppState.currentUserRole === 'admin' ? 'Administrador' : 'Trabajador'})`;
         document.getElementById('logoutBtn').style.display = 'block';
         document.getElementById('tabsContainer').style.display = 'flex';
         document.getElementById('clientePanel').style.display = 'none';
         document.getElementById('tabsContent').style.display = 'block';
-        document.getElementById('loginDiscreto').style.display = 'none'; // Ocultar el botón discreto
+        document.getElementById('loginDiscreto').style.display = 'none';
         
-        // Cargar dashboard
         await cargarDashboard();
         
     } catch (err) {
@@ -76,9 +72,8 @@ function logout() {
     document.getElementById('tabsContainer').style.display = 'none';
     document.getElementById('clientePanel').style.display = 'block';
     document.getElementById('tabsContent').style.display = 'none';
-    document.getElementById('loginDiscreto').style.display = 'block'; // Mostrar el botón discreto
+    document.getElementById('loginDiscreto').style.display = 'block';
     
-    // Limpiar formularios
     document.getElementById('consultaCodigo').value = '';
     document.getElementById('consultaTelefono').value = '';
     document.getElementById('resultadoConsulta').innerHTML = '';
@@ -98,7 +93,6 @@ async function verificarConexion() {
     }
 }
 
-// Función para mostrar el modal de login
 function mostrarLogin() {
     document.getElementById('loginModal').classList.add('active');
     document.getElementById('loginError').style.display = 'none';
