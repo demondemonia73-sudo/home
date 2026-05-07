@@ -53,18 +53,25 @@ async function cargarDashboard() {
         
         tabsContent.innerHTML = html;
         
-        const { data: pedidos } = await db
+        // 🔧 CORREGIDO: 'clientes' en lugar de 'clients'
+        const { data: pedidos, error } = await db
             .from('pedidos')
-            .select('*, clients(nombre)')
+            .select('*, clientes(nombre)')
             .order('created_at', { ascending: false })
             .limit(10);
+        
+        if (error) {
+            console.error('Error cargando pedidos:', error);
+            document.getElementById('ultimosPedidosTabla').innerHTML = '<tr><td colspan="5">Error cargando pedidos</td></tr>';
+            return;
+        }
         
         const tbody = document.getElementById('ultimosPedidosTabla');
         if (pedidos && pedidos.length > 0) {
             tbody.innerHTML = pedidos.map(p => `
                 <tr>
                     <td><strong>${p.codigo}</strong></td>
-                    <tr>${p.clientes?.nombre || 'N/A'}</td>
+                    <td>${p.clientes?.nombre || 'N/A'}</td>
                     <td><span class="badge badge-${p.estado}">${p.estado}</span></td>
                     <td>$${p.total}</td>
                     <td>${new Date(p.created_at).toLocaleDateString()}</td>
@@ -75,6 +82,7 @@ async function cargarDashboard() {
         }
         
     } catch (err) {
+        console.error('Error en dashboard:', err);
         tabsContent.innerHTML = `<div class="alert alert-danger">Error al cargar dashboard: ${err.message}</div>`;
     }
 }
