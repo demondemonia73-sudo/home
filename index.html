@@ -23,6 +23,13 @@
             </div>
         </header>
 
+        <!-- Login discreto para admin/trabajadores -->
+        <div id="loginDiscreto" style="text-align: right; margin-bottom: 10px;">
+            <button id="mostrarLoginBtn" class="btn-link" style="background: none; border: none; color: #666; cursor: pointer; font-size: 12px;">
+                🔐 Acceso trabajadores
+            </button>
+        </div>
+
         <nav class="tabs" id="tabsContainer" style="display: none;">
             <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
             <button class="tab-btn" data-tab="pedidos">📦 Pedidos</button>
@@ -32,7 +39,6 @@
             <button class="tab-btn" data-tab="reportes">📄 Reportes</button>
         </nav>
 
-        <!-- Panel Cliente (visible cuando NO hay sesión) -->
         <section id="clientePanel">
             <div class="card">
                 <h2>🔍 Consultar mi pedido</h2>
@@ -50,22 +56,18 @@
                 </div>
             </div>
             <div id="resultadoConsulta"></div>
-            
-            <!-- Botón para acceder al login desde el panel cliente -->
-            <div style="text-align: center; margin-top: 1rem;">
-                <button id="mostrarLoginBtn" class="btn btn-primary" style="background: #6c757d;">
-                    🔐 Soy trabajador / Admin - Iniciar sesión
-                </button>
-            </div>
         </section>
 
         <main id="tabsContent" style="display: none;"></main>
     </div>
 
-    <!-- Modal de Login -->
+    <!-- Modal de Login MEJORADO - con botón cerrar -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <h2>🔐 Iniciar Sesión</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">🔐 Iniciar Sesión</h2>
+                <button id="cerrarModalBtn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">&times;</button>
+            </div>
             <div id="loginError" class="alert alert-danger" style="display: none;"></div>
             <div class="form-group">
                 <label for="loginEmail">Correo electrónico</label>
@@ -77,7 +79,7 @@
             </div>
             <button id="loginBtn" class="btn btn-primary btn-block">Ingresar al sistema</button>
             <hr>
-            <p class="text-muted text-center">¿Eres cliente? Usa el código de tu pedido en el panel superior</p>
+            <p class="text-muted text-center" style="margin: 0;">¿Solo quieres consultar tu pedido? Cierra esta ventana</p>
         </div>
     </div>
 
