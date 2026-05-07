@@ -84,6 +84,14 @@ let trabajadorEditando = null;
 async function cargarAreas() {
     console.log('🔍 Cargando áreas...');
     
+    // Verificar que db existe
+    if (typeof db === 'undefined') {
+        console.error('❌ db no está definido');
+        const container = document.getElementById('areasCheckbox');
+        if (container) container.innerHTML = '<div class="alert alert-danger">Error de conexión</div>';
+        return;
+    }
+    
     try {
         const { data, error } = await db
             .from('areas')
@@ -91,12 +99,12 @@ async function cargarAreas() {
             .order('nombre');
         
         if (error) {
-            console.error('Error:', error);
+            console.error('Error en consulta:', error);
             throw error;
         }
         
         areasData = data || [];
-        console.log('Áreas obtenidas:', areasData.length);
+        console.log('✅ Áreas obtenidas:', areasData.length);
         
         const container = document.getElementById('areasCheckbox');
         if (container) {
@@ -108,11 +116,14 @@ async function cargarAreas() {
                         <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
                     </label>
                 `).join('');
+                console.log('✅ Checkboxes generados');
             }
+        } else {
+            console.error('❌ Contenedor #areasCheckbox no encontrado');
         }
         
     } catch (err) {
-        console.error('Error:', err);
+        console.error('❌ Error cargando áreas:', err);
         const container = document.getElementById('areasCheckbox');
         if (container) {
             container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
@@ -327,17 +338,17 @@ async function refrescarListaTrabajadores() {
         }
         
         let html = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div style="overflow-x: auto; width: 100%;">
+                <table style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
                     <thead>
                         <tr style="background: #1a73e8; color: white;">
-                            <th style="padding: 12px; text-align: left;">ID</th>
-                            <th style="padding: 12px; text-align: left;">Nombre</th>
-                            <th style="padding: 12px; text-align: left;">Email</th>
-                            <th style="padding: 12px; text-align: left;">Contraseña</th>
-                            <th style="padding: 12px; text-align: left;">Áreas</th>
-                            <th style="padding: 12px; text-align: left;">Estado</th>
-                            <th style="padding: 12px; text-align: left;">Acciones</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">ID</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Nombre</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Email</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Contraseña</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Áreas</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Estado</th>
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -349,22 +360,22 @@ async function refrescarListaTrabajadores() {
             
             html += `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px;">${t.id}</td>
-                    <td style="padding: 10px;"><strong>${t.nombre}</strong></td>
-                    <td style="padding: 10px;">${t.email}</td>
-                    <td style="padding: 10px;">
+                    <td style="padding: 8px; border: 1px solid #ddd;">${t.id}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>${t.nombre}</strong></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${t.email}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
                         <span id="pass-${t.id}" style="filter: blur(4px); cursor: pointer;" onclick="revelePassword(${t.id}, '${(t.password_visible || '').replace(/'/g, "\\'")}')">••••••</span>
-                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px; margin-left: 8px;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
+                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px; margin-left: 8px; border: none; border-radius: 4px; color: white; cursor: pointer;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
                     </td>
-                    <td style="padding: 10px;"><small>${areasNombres}</small></td>
-                    <td style="padding: 10px;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><small>${areasNombres}</small></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">
                         <span style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;">
                             ${t.activo ? '✅ Activo' : '❌ Inactivo'}
                         </span>
                     </td>
-                    <td style="padding: 10px; white-space: nowrap;">
-                        <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
-                        <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; color: white; padding: 4px 8px; font-size: 11px;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
+                    <td style="padding: 8px; border: 1px solid #ddd; white-space: nowrap;">
+                        <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-right: 4px; border: none; border-radius: 4px; cursor: pointer;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
+                        <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; color: white; padding: 4px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
                             ${t.activo ? '❌ Desactivar' : '✅ Activar'}
                         </button>
                     </td>
@@ -386,6 +397,7 @@ async function refrescarListaTrabajadores() {
     }
 }
 
+// Exponer funciones globalmente
 window.editarTrabajador = editarTrabajador;
 window.toggleActivoTrabajador = toggleActivoTrabajador;
 window.resetearPassword = resetearPassword;
