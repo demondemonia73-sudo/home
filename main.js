@@ -57,18 +57,30 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     // ============================================
-    // CONFIGURAR TABS
+    // EXPONER FUNCIONES GLOBALES PARA auth.js
+    // ============================================
+    window.cargarPanelTrabajador = cargarPanelTrabajador;
+    window.cargarDashboard = cargarDashboard;
+    window.cargarPedidos = cargarPedidos;
+    window.cargarProductos = cargarProductos;
+    window.cargarClientes = cargarClientes;
+    window.cargarTrabajadores = cargarTrabajadores;
+    window.cargarReportes = cargarReportes;
+    window.cargarTiposCorrea = cargarTiposCorrea;
+    
+    // ============================================
+    // CONFIGURAR TABS (solo admin)
     // ============================================
     const tabs = document.querySelectorAll('.tab-btn');
     if (tabs.length > 0) {
         const tabModules = {
-            'dashboard': typeof cargarDashboard === 'function' ? cargarDashboard : () => console.warn('cargarDashboard no definida'),
-            'pedidos': typeof cargarPedidos === 'function' ? cargarPedidos : () => console.warn('cargarPedidos no definida'),
-            'productos': typeof cargarProductos === 'function' ? cargarProductos : () => console.warn('cargarProductos no definida'),
-            'clientes': typeof cargarClientes === 'function' ? cargarClientes : () => console.warn('cargarClientes no definida'),
-            'trabajadores': typeof cargarTrabajadores === 'function' ? cargarTrabajadores : () => console.warn('cargarTrabajadores no definida'),
-            'reportes': typeof cargarReportes === 'function' ? cargarReportes : () => console.warn('cargarReportes no definida'),
-            'tiposCorrea': typeof cargarTiposCorrea === 'function' ? cargarTiposCorrea : () => console.warn('cargarTiposCorrea no definida')
+            'dashboard': typeof window.cargarDashboard === 'function' ? window.cargarDashboard : () => console.warn('cargarDashboard no definida'),
+            'pedidos': typeof window.cargarPedidos === 'function' ? window.cargarPedidos : () => console.warn('cargarPedidos no definida'),
+            'productos': typeof window.cargarProductos === 'function' ? window.cargarProductos : () => console.warn('cargarProductos no definida'),
+            'clientes': typeof window.cargarClientes === 'function' ? window.cargarClientes : () => console.warn('cargarClientes no definida'),
+            'trabajadores': typeof window.cargarTrabajadores === 'function' ? window.cargarTrabajadores : () => console.warn('cargarTrabajadores no definida'),
+            'reportes': typeof window.cargarReportes === 'function' ? window.cargarReportes : () => console.warn('cargarReportes no definida'),
+            'tiposCorrea': typeof window.cargarTiposCorrea === 'function' ? window.cargarTiposCorrea : () => console.warn('cargarTiposCorrea no definida')
         };
         
         tabs.forEach(btn => {
@@ -86,5 +98,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('✅ Sistema inicializado correctamente');
 });
 
+// Exponer funciones globales
 window.mostrarLogin = mostrarLogin;
 window.cerrarModalLogin = cerrarModalLogin;
