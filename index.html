@@ -2,82 +2,90 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TallerTotal Manager</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TallerTotal Manager - Sistema de Gestión Profesional</title>
     
-    <!-- CSS -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
     
     <!-- Librerías externas -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
+    <!-- Estilos profesionales -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
-        <div class="header">
+        <header class="header">
             <h1>🔧 TallerTotal Manager</h1>
             <div class="user-info">
                 <span id="userNameDisplay"></span>
-                <button id="logoutBtn" class="btn-logout" style="display: none;">Cerrar Sesión</button>
+                <button id="logoutBtn" class="btn btn-danger" style="display: none;">Cerrar Sesión</button>
             </div>
-        </div>
+        </header>
 
-        <!-- Pestañas (solo visibles en sesión) -->
-        <div class="tabs" id="tabsContainer" style="display: none;">
+        <!-- Navegación (solo visible cuando hay sesión) -->
+        <nav class="tabs" id="tabsContainer" style="display: none;">
             <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
             <button class="tab-btn" data-tab="pedidos">📦 Pedidos</button>
             <button class="tab-btn" data-tab="productos">🛒 Productos</button>
             <button class="tab-btn" data-tab="clientes">👥 Clientes</button>
             <button class="tab-btn" data-tab="trabajadores">👨‍🔧 Trabajadores</button>
             <button class="tab-btn" data-tab="reportes">📄 Reportes</button>
-        </div>
+        </nav>
 
         <!-- Panel Cliente (sin login) -->
-        <div id="clientePanel">
+        <section id="clientePanel">
             <div class="card">
-                <h3>🔍 Consultar mi pedido</h3>
+                <h2>🔍 Consultar mi pedido</h2>
                 <div class="form-group">
-                    <label>Código de pedido</label>
-                    <input type="text" id="consultaCodigo" placeholder="Ej: PED-0001">
+                    <label for="consultaCodigo">Código de pedido</label>
+                    <input type="text" id="consultaCodigo" placeholder="Ejemplo: PED-0001" class="form-control">
                 </div>
                 <div class="form-group">
-                    <label>Tu número de teléfono</label>
-                    <input type="text" id="consultaTelefono" placeholder="0987654321">
+                    <label for="consultaTelefono">Tu número de teléfono</label>
+                    <input type="tel" id="consultaTelefono" placeholder="0987654321" class="form-control">
                 </div>
-                <button id="consultarBtn">Consultar</button>
-                <button id="nuevoPedidoBtn" class="success">➕ Hacer nuevo pedido</button>
+                <div class="button-group">
+                    <button id="consultarBtn" class="btn btn-primary">Consultar</button>
+                    <button id="nuevoPedidoBtn" class="btn btn-success">➕ Hacer nuevo pedido</button>
+                </div>
             </div>
             <div id="resultadoConsulta"></div>
-        </div>
+        </section>
 
         <!-- Contenido dinámico (dashboard, etc.) -->
-        <div id="tabsContent" style="display: none;"></div>
+        <main id="tabsContent" style="display: none;"></main>
     </div>
 
     <!-- Modal de Login -->
-    <div id="loginModal" class="modal active">
+    <div id="loginModal" class="modal">
         <div class="modal-content">
             <h2>🔐 Iniciar Sesión</h2>
-            <div id="loginError" class="alert alert-error" style="display: none;"></div>
+            <div id="loginError" class="alert alert-danger" style="display: none;"></div>
             <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="loginEmail" placeholder="admin@taller.com">
+                <label for="loginEmail">Correo electrónico</label>
+                <input type="email" id="loginEmail" placeholder="admin@taller.com" class="form-control">
             </div>
             <div class="form-group">
-                <label>Contraseña</label>
-                <input type="password" id="loginPassword" placeholder="admin123">
+                <label for="loginPassword">Contraseña</label>
+                <input type="password" id="loginPassword" placeholder="••••••••" class="form-control">
             </div>
-            <button id="loginBtn">Ingresar</button>
+            <button id="loginBtn" class="btn btn-primary btn-block">Ingresar al sistema</button>
             <hr>
-            <p class="text-center">¿Eres cliente? Usa el código de tu pedido arriba</p>
+            <p class="text-muted text-center">¿Eres cliente? Usa el código de tu pedido en el panel superior</p>
         </div>
     </div>
 
     <!-- Script principal -->
-    <script src="script.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/pedidos.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
