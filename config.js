@@ -23,3 +23,4 @@ const AppState = {
 };
 
 console.log('✅ Configuración cargada');
+console.log('db disponible?', typeof db === 'object' ? '✅ Sí' : '❌ No');
