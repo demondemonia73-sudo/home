@@ -4,8 +4,8 @@
 const SUPABASE_URL = 'https://iyanyiihgjnnlcjapnge.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_gxx8Bo4xtnPcCHWTooE3fA_yE9j1cIz';
 
-// Cliente de Supabase
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// CAMBIADO: ahora se llama supabaseClient (no supabase)
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
 });
 
@@ -20,13 +20,11 @@ let currentUserName = null;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM cargado, asignando eventos...');
     
-    // Asignar eventos a los botones
     document.getElementById('loginBtn').onclick = login;
     document.getElementById('logoutBtn').onclick = logout;
     document.getElementById('consultarBtn').onclick = consultarPedido;
     document.getElementById('nuevoPedidoBtn').onclick = mostrarNuevoPedidoForm;
     
-    // Configurar tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.onclick = () => {
             const tab = btn.dataset.tab;
@@ -37,7 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     });
     
-    // Verificar conexión al inicio
     verificarConexion();
 });
 
@@ -47,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function verificarConexion() {
     console.log('🔄 Verificando conexión con Supabase...');
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('usuarios')
             .select('count', { count: 'exact', head: true });
         
@@ -80,7 +77,7 @@ async function login() {
     console.log('🔍 Buscando usuario:', email);
     
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('usuarios')
             .select('*')
             .eq('email', email)
@@ -107,7 +104,6 @@ async function login() {
             return;
         }
         
-        // Login exitoso
         currentUser = data;
         currentUserRole = data.rol;
         currentUserName = data.nombre;
@@ -144,9 +140,6 @@ function logout() {
     document.getElementById('resultadoConsulta').innerHTML = '';
 }
 
-// =====================================================
-// FUNCIONES AUXILIARES
-// =====================================================
 function mostrarError(elementId, mensaje) {
     const errorDiv = document.getElementById(elementId);
     errorDiv.textContent = mensaje;
@@ -164,8 +157,8 @@ async function cargarDashboard() {
     tabsContent.innerHTML = '<div class="card"><p>Cargando dashboard...</p></div>';
     
     try {
-        const { data: pedidosData } = await supabase.from('pedidos').select('*');
-        const { data: clientesData } = await supabase.from('clientes').select('*');
+        const { data: pedidosData } = await supabaseClient.from('pedidos').select('*');
+        const { data: clientesData } = await supabaseClient.from('clientes').select('*');
         
         const pendientes = pedidosData ? pedidosData.filter(p => p.estado === 'pendiente').length : 0;
         const enProceso = pedidosData ? pedidosData.filter(p => p.estado === 'en_proceso').length : 0;
@@ -203,7 +196,7 @@ async function cargarDashboard() {
         
         tabsContent.innerHTML = html;
         
-        const { data: pedidos } = await supabase
+        const { data: pedidos } = await supabaseClient
             .from('pedidos')
             .select('*, clientes(nombre)')
             .order('created_at', { ascending: false })
@@ -241,7 +234,7 @@ async function consultarPedido() {
     }
     
     try {
-        const { data: pedido, error } = await supabase
+        const { data: pedido, error } = await supabaseClient
             .from('pedidos')
             .select('*, clientes(*)')
             .eq('codigo', codigo)
@@ -257,7 +250,7 @@ async function consultarPedido() {
             return;
         }
         
-        const { data: detalles } = await supabase
+        const { data: detalles } = await supabaseClient
             .from('detalle_pedido')
             .select('*')
             .eq('pedido_id', pedido.id);
