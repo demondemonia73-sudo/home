@@ -83,56 +83,57 @@ async function cargarTrabajadores() {
 let trabajadorEditando = null;
 
 async function cargarAreas() {
-    console.log('🔍 [cargarAreas] Iniciando carga de áreas...');
+    console.log('🔍 [cargarAreas] Iniciando...');
     
-    // Verificar que db existe
+    // Verificar db
     if (typeof db === 'undefined') {
         console.error('❌ db no está definido');
         const container = document.getElementById('areasCheckbox');
-        if (container) container.innerHTML = '<div class="alert alert-danger">Error de conexión con la base de datos</div>';
+        if (container) container.innerHTML = '<div class="alert alert-danger">Error de conexión</div>';
         return;
     }
     
     try {
-        const { data, error } = await db
+        // Consulta directa
+        const { data, error, status } = await db
             .from('areas')
             .select('*')
             .order('nombre');
         
+        console.log('📊 Status:', status);
+        console.log('📊 Data:', data);
+        console.log('📊 Error:', error);
+        
         if (error) {
-            console.error('❌ Error de Supabase:', error);
+            console.error('❌ Error en consulta:', error);
             throw error;
         }
         
         areasData = data || [];
-        console.log(`✅ Áreas cargadas: ${areasData.length} registros`);
+        console.log(`✅ Áreas obtenidas: ${areasData.length}`);
         
-        // Esperar un momento para asegurar que el DOM esté listo
-        setTimeout(() => {
-            const container = document.getElementById('areasCheckbox');
-            console.log('📦 Contenedor areasCheckbox:', container ? 'Encontrado' : 'NO ENCONTRADO');
-            
-            if (container) {
-                if (areasData.length === 0) {
-                    container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Crea áreas primero en la base de datos.</div>';
-                } else {
-                    container.innerHTML = areasData.map(area => `
-                        <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer;">
-                            <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
-                        </label>
-                    `).join('');
-                    console.log('✅ Checkboxes generados correctamente');
-                }
+        // Mostrar en el contenedor
+        const container = document.getElementById('areasCheckbox');
+        if (container) {
+            if (areasData.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas. Ejecuta SQL para crear áreas.</div>';
             } else {
-                console.error('❌ No se encontró el contenedor #areasCheckbox');
+                container.innerHTML = areasData.map(area => `
+                    <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer;">
+                        <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
+                    </label>
+                `).join('');
+                console.log('✅ Checkboxes generados');
             }
-        }, 100);
+        } else {
+            console.error('❌ Contenedor #areasCheckbox no encontrado');
+        }
         
     } catch (err) {
         console.error('❌ Error cargando áreas:', err);
         const container = document.getElementById('areasCheckbox');
         if (container) {
-            container.innerHTML = `<div class="alert alert-danger">Error cargando áreas: ${err.message}</div>`;
+            container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
         }
     }
 }
@@ -355,7 +356,7 @@ async function refrescarListaTrabajadores() {
                             <th>Áreas</th>
                             <th>Estado</th>
                             <th>Acciones</th>
-                        </table>
+                        </tr>
                     </thead>
                     <tbody>
         `;
