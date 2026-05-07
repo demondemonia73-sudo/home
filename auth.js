@@ -98,3 +98,16 @@ function mostrarLogin() {
     document.getElementById('loginError').style.display = 'none';
     document.getElementById('loginEmail').focus();
 }
+
+// ============================================
+// FUNCIÓN COMÚN PARA VERIFICAR SESIÓN
+// ============================================
+
+function verificarSesion() {
+    if (!AppState.isLoggedIn) {
+        alert('⚠️ Debes iniciar sesión para acceder a esta sección.');
+        mostrarLogin();
+        return false;
+    }
+    return true;
+}
