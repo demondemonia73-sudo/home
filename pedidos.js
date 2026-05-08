@@ -36,9 +36,7 @@ async function consultarPedido() {
             return;
         }
         
-        // ============================================
         // PEDIDO ENTREGADO - NO SE MUESTRA DETALLE
-        // ============================================
         if (pedido.estado === 'entregado') {
             resultadoDiv.innerHTML = `
                 <div class="card" style="margin-top: 1rem; border-left: 4px solid #6c757d;">
@@ -222,6 +220,7 @@ function aplicarFiltro(estado) {
 
 async function refrescarListaPedidos() {
     const listaDiv = document.getElementById('listaPedidos');
+    if (!listaDiv) return;
     listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
     
     try {
@@ -244,9 +243,24 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        let html = `<div class="table-container"></table><thead>运转
-                <th>Código</th><th>Cliente</th><th>Teléfono</th><th>Total</th><th>Estado</th><th>Entrega</th><th>Adelanto</th><th>Fecha</th><th>Acciones</th>
-            </thead><tbody>`;
+        let html = `
+            <div class="table-container">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #1a73e8; color: white;">
+                            <th style="padding: 10px; text-align: left;">Código</th>
+                            <th style="padding: 10px; text-align: left;">Cliente</th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Total</th>
+                            <th style="padding: 10px; text-align: left;">Estado</th>
+                            <th style="padding: 10px; text-align: left;">Entrega</th>
+                            <th style="padding: 10px; text-align: left;">Adelanto</th>
+                            <th style="padding: 10px; text-align: left;">Fecha</th>
+                            <th style="padding: 10px; text-align: left;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
         
         for (const p of pedidosData) {
             const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', p.id);
@@ -258,41 +272,51 @@ async function refrescarListaPedidos() {
             };
             const entregaShow = p.tipo_entrega ? entregaText[p.tipo_entrega] || p.tipo_entrega : 'N/A';
             
-            let estadoSelect = `
-                <select id="estado-${p.id}" class="form-control" style="width: 130px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
-                    <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                    <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
-                    <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
-                    <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
-                    <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
-                    <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
-                </select>
-            `;
-            
             html += `
-                <tr>
-                    <td><strong>${p.codigo}</strong></td>
-                    <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
-                    <td>${p.clientes?.telefono || 'N/A'}</td>
-                    <td><strong style="color: #28a745;">Bs ${p.total.toFixed(2)}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
-                    <td>${estadoSelect}</td>
-                    <td>${entregaShow}</td>
-                    <td>${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
-                    <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
-                    <td>
-                        <button class="btn" style="background: #17a2b8; padding: 0.3rem 0.6rem;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
-                        ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.6rem; margin-top: 0.2rem;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar Precio</button>` : ''}
-                        ${p.estado === 'pendiente' && !p.requiere_cotizacion ? `<button class="btn" style="background: #dc3545; padding: 0.3rem 0.6rem; margin-top: 0.2rem;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
-                        ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
+                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
+                    <td style="padding: 8px;">${p.clientes?.telefono || 'N/A'}</td>
+                    <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
+                    <td style="padding: 8px;">
+                        <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
+                            <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                            <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
+                            <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
+                            <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
+                            <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
+                            <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
+                        </select>
+                    </td>
+                    <td style="padding: 8px;">${entregaShow}</td>
+                    <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
+                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                    <td style="padding: 8px;">
+                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
+                        ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
+                        ${p.estado === 'pendiente' && !p.requiere_cotizacion ? `<button class="btn" style="background: #dc3545; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
+                        ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
                 </tr>
-                <tr style="background: #f9f9f9;"><td colspan="9"><details><summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary><div style="margin-top: 0.5rem; padding-left: 1rem;">
-                    ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">Bs ${d.subtotal.toFixed(2)}</span></div>`).join('') || '<span>Sin productos</span>'}
-                </div></details></td></tr>
+                <tr style="background: #f9f9f9;">
+                    <td colspan="9" style="padding: 8px;">
+                        <details>
+                            <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
+                            <div style="margin-top: 8px; padding-left: 16px;">
+                                ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">Bs ${d.subtotal?.toFixed(2) || '0.00'}</span></div>`).join('') || '<span>Sin productos</span>'}
+                            </div>
+                        </details>
+                    </td>
+                </tr>
             `;
         }
         
-        html += `</tbody>}</div>`;
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
         listaDiv.innerHTML = html;
         
     } catch (err) {
@@ -427,7 +451,7 @@ async function rechazarPedido(id, codigo) {
 async function verDetallePedido(id) {
     const { data: pedido } = await db.from('pedidos').select('*, clientes(*)').eq('id', id).single();
     const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', id);
-    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal.toFixed(2)}`).join('\n') || 'Sin productos';
+    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal?.toFixed(2) || '0.00'}`).join('\n') || 'Sin productos';
     
     let entregaInfo = '';
     if (pedido.tipo_entrega) {
