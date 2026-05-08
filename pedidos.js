@@ -316,10 +316,10 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        // Obtener conteo y detalles de rechazos por pedido
+        // Obtener conteo de rechazos
         const { data: rechazosList } = await db
             .from('rechazos_trabajadores')
-            .select('pedido_id, trabajador_id, motivo, fecha_rechazo');
+            .select('pedido_id');
         
         const rechazoCountMap = {};
         if (rechazosList) {
@@ -360,46 +360,46 @@ async function refrescarListaPedidos() {
             const rechazoCount = rechazoCountMap[p.id] || 0;
             
             html += `
-                <tr style="border-bottom: 1px solid #ddd;">
-                    <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
-                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
-                    <td style="padding: 8px;">${p.clientes?.telefono || 'N/A'}<tr>
-                    <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
-                    <td style="padding: 8px;">
-                        <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
-                            <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                            <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
-                            <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
-                            <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
-                            <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
-                            <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
-                        </select>
-                        ${p.rechazo_definitivo ? '<br><span style="color: red;">CANCELADO</span>' : ''}
-                    </td
-                    <td style="padding: 8px; text-align: center;">
-                        ${rechazoCount > 0 ? `<span style="color: #dc3545; cursor: pointer; text-decoration: underline;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
-                    </td
-                    <td style="padding: 8px;">${entregaShow}</td>
-                    <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
-                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></table>
-                    <td style="padding: 8px;">
-                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
-                        ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
-                        ${p.estado === 'pendiente' && !p.requiere_cotizacion && !p.rechazo_definitivo ? `<button class="btn" style="background: #dc3545; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
-                        ${p.estado === 'pendiente' && !p.rechazo_definitivo ? `<button class="btn" style="background: #6c757d; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarDefinitivo(${p.id}, '${p.codigo}')">❌ Rechazar Definitivo</button>` : ''}
-                        ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
-                    </td>
-                </tr>
-                <tr style="background: #f9f9f9;">
-                    <td colspan="10" style="padding: 8px;">
-                        <details>
-                            <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
-                            <div style="margin-top: 8px; padding-left: 16px;">
-                                ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">Bs ${d.subtotal?.toFixed(2) || '0.00'}</span></div>`).join('') || '<span>Sin productos</span>'}
-                            </div>
-                        </details>
-                    </td>
-                </tr>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
+                            <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}</td>
+                            <td style="padding: 8px;">${p.clientes?.telefono || 'N/A'}</td>
+                            <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
+                            <td style="padding: 8px;">
+                                <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
+                                    <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                                    <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
+                                    <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
+                                    <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
+                                    <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
+                                    <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
+                                </select>
+                                ${p.rechazo_definitivo ? '<br><span style="color: red;">CANCELADO</span>' : ''}
+                            </td>
+                            <td style="padding: 8px; text-align: center;">
+                                ${rechazoCount > 0 ? `<span style="color: #dc3545; cursor: pointer; text-decoration: underline;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
+                            </td>
+                            <td style="padding: 8px;">${entregaShow}</td>
+                            <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
+                            <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                            <td style="padding: 8px;">
+                                <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
+                                ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
+                                ${p.estado === 'pendiente' && !p.requiere_cotizacion && !p.rechazo_definitivo ? `<button class="btn" style="background: #dc3545; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
+                                ${p.estado === 'pendiente' && !p.rechazo_definitivo ? `<button class="btn" style="background: #6c757d; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarDefinitivo(${p.id}, '${p.codigo}')">❌ Rechazar Definitivo</button>` : ''}
+                                ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
+                            </td>
+                        </tr>
+                        <tr style="background: #f9f9f9;">
+                            <td colspan="10" style="padding: 8px;">
+                                <details>
+                                    <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
+                                    <div style="margin-top: 8px; padding-left: 16px;">
+                                        ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">Bs ${d.subtotal?.toFixed(2) || '0.00'}</span></div>`).join('') || '<span>Sin productos</span>'}
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
             `;
         }
         
