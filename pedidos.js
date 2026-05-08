@@ -36,9 +36,7 @@ async function consultarPedido() {
             return;
         }
         
-        // ============================================
         // RECHAZO DEFINITIVO - Cliente ve motivo
-        // ============================================
         if (pedido.rechazo_definitivo === true || pedido.estado === 'rechazado_definitivo') {
             resultadoDiv.innerHTML = `
                 <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
@@ -264,6 +262,35 @@ async function rechazarDefinitivo(id, codigo) {
     }
 }
 
+// ============================================
+// VER MOTIVOS DE RECHAZO DE TRABAJADORES
+// ============================================
+async function verMotivosRechazo(pedidoId, codigo) {
+    try {
+        const { data: rechazos } = await db
+            .from('rechazos_trabajadores')
+            .select('*, trabajador_id, usuarios(nombre)')
+            .eq('pedido_id', pedidoId);
+        
+        if (!rechazos || rechazos.length === 0) {
+            alert(`No hay rechazos registrados para el pedido ${codigo}`);
+            return;
+        }
+        
+        let mensaje = `📋 RECHAZOS del pedido ${codigo}:\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+        rechazos.forEach((r, idx) => {
+            mensaje += `${idx + 1}. 👨‍🔧 ${r.usuarios?.nombre || 'Trabajador ID: ' + r.trabajador_id}\n`;
+            mensaje += `   📝 Motivo: ${r.motivo}\n`;
+            mensaje += `   📅 Fecha: ${new Date(r.fecha_rechazo).toLocaleString()}\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+        });
+        
+        alert(mensaje);
+        
+    } catch (err) {
+        alert('Error al cargar motivos: ' + err.message);
+    }
+}
+
 async function refrescarListaPedidos() {
     const listaDiv = document.getElementById('listaPedidos');
     if (!listaDiv) return;
@@ -289,14 +316,14 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        // Obtener conteo de rechazos por pedido
-        const { data: rechazosCount } = await db
+        // Obtener conteo y detalles de rechazos por pedido
+        const { data: rechazosList } = await db
             .from('rechazos_trabajadores')
-            .select('pedido_id');
+            .select('pedido_id, trabajador_id, motivo, fecha_rechazo');
         
         const rechazoCountMap = {};
-        if (rechazosCount) {
-            rechazosCount.forEach(r => {
+        if (rechazosList) {
+            rechazosList.forEach(r => {
                 rechazoCountMap[r.pedido_id] = (rechazoCountMap[r.pedido_id] || 0) + 1;
             });
         }
@@ -336,7 +363,7 @@ async function refrescarListaPedidos() {
                 <tr style="border-bottom: 1px solid #ddd;">
                     <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
                     <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.direccion || ''}</small></td>
-                    <td style="padding: 8px;">${p.clientes?.telefono || 'N/A'}</td>
+                    <td style="padding: 8px;">${p.clientes?.telefono || 'N/A'}<tr>
                     <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
                     <td style="padding: 8px;">
                         <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
@@ -350,11 +377,11 @@ async function refrescarListaPedidos() {
                         ${p.rechazo_definitivo ? '<br><span style="color: red;">CANCELADO</span>' : ''}
                     </td
                     <td style="padding: 8px; text-align: center;">
-                        ${rechazoCount > 0 ? `<span style="color: #dc3545;">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
+                        ${rechazoCount > 0 ? `<span style="color: #dc3545; cursor: pointer; text-decoration: underline;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
                     </td
                     <td style="padding: 8px;">${entregaShow}</td>
                     <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
-                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></table>
                     <td style="padding: 8px;">
                         <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
                         ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
@@ -554,3 +581,4 @@ window.asignarPrecioEspecial = asignarPrecioEspecial;
 window.aceptarCotizacion = aceptarCotizacion;
 window.cancelarCotizacion = cancelarCotizacion;
 window.rechazarDefinitivo = rechazarDefinitivo;
+window.verMotivosRechazo = verMotivosRechazo;
