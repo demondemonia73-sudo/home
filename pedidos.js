@@ -6,7 +6,7 @@ let pedidosData = [];
 let filtroEstado = 'todos';
 
 // ============================================
-// CONSULTA DE PEDIDO (CLIENTE - desde index.html)
+// CONSULTA DE PEDIDO (CLIENTE - desde index.html) - MEJORADA
 // ============================================
 
 async function consultarPedido() {
@@ -15,144 +15,146 @@ async function consultarPedido() {
     const resultadoDiv = document.getElementById('resultadoConsulta');
     
     if (!codigo || !telefono) {
-        resultadoDiv.innerHTML = '<div class="alert alert-danger">Ingresa código y teléfono</div>';
+        resultadoDiv.innerHTML = '<div class="alert alert-danger">Ingresa código de pedido (PED-XXXX) o tu nombre, y tu teléfono</div>';
         return;
     }
     
     try {
-        const { data: pedido, error } = await db
-            .from('pedidos')
-            .select('*, clientes(*)')
-            .eq('codigo', codigo)
-            .maybeSingle();
+        let pedidos = [];
+        let busquedaPorCodigo = false;
         
-        if (error || !pedido) {
-            resultadoDiv.innerHTML = '<div class="alert alert-danger">Pedido no encontrado</div>';
-            return;
-        }
-        
-        if (pedido.clientes?.telefono !== telefono) {
-            resultadoDiv.innerHTML = '<div class="alert alert-danger">Teléfono incorrecto</div>';
-            return;
-        }
-        
-        // RECHAZO DEFINITIVO - Cliente ve motivo
-        if (pedido.rechazo_definitivo === true || pedido.estado === 'rechazado_definitivo') {
-            resultadoDiv.innerHTML = `
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
-                    <h3>📄 Pedido ${pedido.codigo}</h3>
-                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #dc3545; color: white;">❌ Cancelado</span></p>
-                    <p><strong>⚠️ Motivo de la cancelación:</strong> ${pedido.motivo_rechazo_definitivo || 'No especificado'}</p>
-                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
-                    <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
-                </div>
-            `;
-            return;
-        }
-        
-        // PEDIDO ENTREGADO - NO SE MUESTRA DETALLE
-        if (pedido.estado === 'entregado') {
-            resultadoDiv.innerHTML = `
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid #6c757d;">
-                    <h3>📄 Pedido ${pedido.codigo}</h3>
-                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #6c757d; color: white;">📦 Entregado</span></p>
-                    <p><strong>⚠️ Este pedido ya fue entregado y no requiere acciones.</strong></p>
-                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
-                    <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
-                </div>
-            `;
-            return;
-        }
-        
-        const { data: detalles } = await db
-            .from('detalle_pedido')
-            .select('*')
-            .eq('pedido_id', pedido.id);
-        
-        let detallesHtml = '<h4>📋 Detalle del pedido:</h4><ul>';
-        if (detalles && detalles.length > 0) {
-            detalles.forEach(d => {
-                detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - Bs ${d.subtotal.toFixed(2)}</li>`;
-            });
-        } else {
-            detallesHtml += '<li>Sin productos registrados</li>';
-        }
-        detallesHtml += '</ul>';
-        
-        // Mostrar mensaje especial si el pedido fue rechazado
-        if (pedido.estado === 'rechazado') {
-            resultadoDiv.innerHTML = `
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
-                    <h3>📄 Pedido ${pedido.codigo}</h3>
-                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #dc3545; color: white;">❌ Rechazado</span></p>
-                    <p><strong>⚠️ Motivo del rechazo:</strong> ${pedido.motivo_rechazo || 'No especificado'}</p>
-                    <p><strong>📅 Fecha de rechazo:</strong> ${pedido.fecha_rechazo ? new Date(pedido.fecha_rechazo).toLocaleString() : 'N/A'}</p>
-                    ${detallesHtml}
-                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
-                    <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
-                </div>
-            `;
-            return;
-        }
-        
-        // Mostrar cotización si el pedido está en estado 'cotizado'
-        if (pedido.estado === 'cotizado' && pedido.precio_asignado_manual) {
-            resultadoDiv.innerHTML = `
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid #ffc107;">
-                    <h3>📄 Pedido ${pedido.codigo}</h3>
-                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #ffc107; color: #333;">💰 Cotizado</span></p>
-                    ${detallesHtml}
-                    <p><strong>💰 Precio cotizado:</strong> <strong style="color: #28a745;">Bs ${pedido.precio_asignado_manual.toFixed(2)}</strong></p>
-                    <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
-                        <button class="btn btn-success" onclick="aceptarCotizacion(${pedido.id}, '${pedido.codigo}')">✅ Aceptar pedido</button>
-                        <button class="btn btn-danger" onclick="cancelarCotizacion(${pedido.id}, '${pedido.codigo}')">❌ Cancelar pedido</button>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-        
-        const estadoText = {
-            'pendiente': '⏳ Pendiente - Esperando asignación',
-            'en_proceso': '⚙️ En proceso - Estamos trabajando en tu pedido',
-            'terminado': '✅ Terminado - Listo para retirar'
-        };
-        
-        let entregaHtml = '';
-        if (pedido.tipo_entrega) {
-            const entregaText = {
-                'retiro_taller': '📦 Retiro en taller',
-                'envio_domicilio': '🚚 Envío a domicilio',
-                'entrega_tienda': '🏪 Entrega en tienda'
-            };
-            entregaHtml = `<p><strong>🚚 Entrega:</strong> ${entregaText[pedido.tipo_entrega] || pedido.tipo_entrega}</p>`;
-            if (pedido.direccion_envio) {
-                entregaHtml += `<p><strong>📍 Dirección de envío:</strong> ${pedido.direccion_envio}</p>`;
+        // Si el código parece un código de pedido (empieza con PED-)
+        if (codigo.toUpperCase().startsWith('PED-')) {
+            busquedaPorCodigo = true;
+            const { data, error } = await db
+                .from('pedidos')
+                .select('*, clientes(*)')
+                .eq('codigo', codigo)
+                .maybeSingle();
+            
+            if (error) throw error;
+            if (data) pedidos = [data];
+            
+        } 
+        // Si no es código, buscar por nombre del cliente
+        else {
+            // Primero obtener el cliente por nombre y teléfono
+            const { data: cliente, error: clienteError } = await db
+                .from('clientes')
+                .select('id')
+                .eq('nombre', codigo)
+                .eq('telefono', telefono)
+                .maybeSingle();
+            
+            if (clienteError) throw clienteError;
+            
+            if (cliente) {
+                const { data: pedidosCliente, error: pedidosError } = await db
+                    .from('pedidos')
+                    .select('*, clientes(*)')
+                    .eq('cliente_id', cliente.id)
+                    .order('created_at', { ascending: false });
+                
+                if (pedidosError) throw pedidosError;
+                pedidos = pedidosCliente || [];
             }
         }
         
-        resultadoDiv.innerHTML = `
-            <div class="card" style="margin-top: 1rem; border-left: 4px solid #1a73e8;">
-                <h3>📄 Pedido ${pedido.codigo}</h3>
-                <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                <p><strong>📌 Estado:</strong> <span class="badge badge-${pedido.estado}">${estadoText[pedido.estado] || pedido.estado}</span></p>
-                ${entregaHtml}
-                ${detallesHtml}
-                <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
-                ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
-            </div>
-        `;
+        if (pedidos.length === 0) {
+            resultadoDiv.innerHTML = '<div class="alert alert-danger">No se encontraron pedidos. Verifica tu nombre y teléfono.</div>';
+            return;
+        }
+        
+        // Verificar teléfono para el caso de código individual
+        if (busquedaPorCodigo && pedidos[0]?.clientes?.telefono !== telefono) {
+            resultadoDiv.innerHTML = '<div class="alert alert-danger">Teléfono incorrecto para este pedido</div>';
+            return;
+        }
+        
+        // Mostrar todos los pedidos encontrados
+        let html = '';
+        
+        for (const pedido of pedidos) {
+            const { data: detalles } = await db
+                .from('detalle_pedido')
+                .select('*')
+                .eq('pedido_id', pedido.id);
+            
+            let detallesHtml = '<h4>📋 Detalle del pedido:</h4><ul>';
+            if (detalles && detalles.length > 0) {
+                detalles.forEach(d => {
+                    detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - Bs ${d.subtotal?.toFixed(2) || '0.00'}</li>`;
+                });
+            } else {
+                detallesHtml += '<li>Sin productos registrados</li>';
+            }
+            detallesHtml += '</ul>';
+            
+            const estadoText = {
+                'pendiente': '⏳ Pendiente',
+                'en_proceso': '⚙️ En proceso',
+                'terminado': '✅ Terminado - Listo para retirar',
+                'entregado': '📦 Entregado',
+                'rechazado': '❌ Rechazado',
+                'cotizado': '💰 Cotizado',
+                'rechazado_definitivo': '❌ Cancelado'
+            };
+            
+            const estadoColor = {
+                'pendiente': '#ffc107',
+                'en_proceso': '#17a2b8',
+                'terminado': '#28a745',
+                'entregado': '#6c757d',
+                'rechazado': '#dc3545',
+                'cotizado': '#ffc107',
+                'rechazado_definitivo': '#dc3545'
+            };
+            
+            // Si el pedido fue rechazado definitivamente, mostrar motivo
+            if (pedido.rechazo_definitivo === true || pedido.estado === 'rechazado_definitivo') {
+                html += `
+                    <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
+                        <h3>📄 Pedido ${pedido.codigo}</h3>
+                        <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                        <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                        <p><strong>📌 Estado:</strong> <span class="badge" style="background: #dc3545; color: white;">❌ Cancelado</span></p>
+                        <p><strong>⚠️ Motivo de la cancelación:</strong> ${pedido.motivo_rechazo_definitivo || 'No especificado'}</p>
+                        ${detallesHtml}
+                        <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total?.toFixed(2) || '0.00'}</strong></p>
+                        <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
+                    </div>
+                `;
+                continue;
+            }
+            
+            // Mostrar pedido normal
+            html += `
+                <div class="card" style="margin-top: 1rem; border-left: 4px solid ${estadoColor[pedido.estado] || '#1a73e8'};">
+                    <h3>📄 Pedido ${pedido.codigo}</h3>
+                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: ${estadoColor[pedido.estado] || '#1a73e8'}; color: white;">${estadoText[pedido.estado] || pedido.estado}</span></p>
+                    ${pedido.tipo_entrega ? `<p><strong>🚚 Entrega:</strong> ${pedido.tipo_entrega === 'retiro_taller' ? '📦 Retiro en taller' : pedido.tipo_entrega === 'envio_domicilio' ? '🚚 Envío a domicilio' : '🏪 Entrega en tienda'}</p>` : ''}
+                    ${detallesHtml}
+                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total?.toFixed(2) || '0.00'}</strong></p>
+                    ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
+                    ${pedido.estado === 'cotizado' && pedido.precio_asignado_manual ? `
+                        <div style="margin-top: 1rem;">
+                            <p><strong>💰 Precio cotizado:</strong> Bs ${pedido.precio_asignado_manual.toFixed(2)}</p>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-success" onclick="aceptarCotizacion(${pedido.id}, '${pedido.codigo}')">✅ Aceptar pedido</button>
+                                <button class="btn btn-danger" onclick="cancelarCotizacion(${pedido.id}, '${pedido.codigo}')">❌ Cancelar pedido</button>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        resultadoDiv.innerHTML = html;
         
     } catch (err) {
+        console.error('Error en consulta:', err);
         resultadoDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
     }
 }
@@ -162,7 +164,7 @@ function mostrarNuevoPedidoForm() {
 }
 
 // ============================================
-// GESTIÓN DE PEDIDOS (ADMIN)
+// GESTIÓN DE PEDIDOS (ADMIN) - RESTANTE IGUAL
 // ============================================
 
 async function cargarPedidos() {
@@ -316,7 +318,6 @@ async function refrescarListaPedidos() {
             return;
         }
         
-        // Obtener conteo de rechazos
         const { data: rechazosList } = await db
             .from('rechazos_trabajadores')
             .select('pedido_id');
@@ -378,7 +379,7 @@ async function refrescarListaPedidos() {
                             </td>
                             <td style="padding: 8px; text-align: center;">
                                 ${rechazoCount > 0 ? `<span style="color: #dc3545; cursor: pointer; text-decoration: underline;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
-                            </td>
+                            <td>
                             <td style="padding: 8px;">${entregaShow}</td>
                             <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
                             <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
