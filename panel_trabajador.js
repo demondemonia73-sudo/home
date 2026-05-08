@@ -134,7 +134,7 @@ async function rechazarPedidoTrabajador(id, codigo) {
 }
 
 // ============================================
-// PEDIDOS DISPONIBLES (excluyendo los rechazados por este trabajador)
+// PEDIDOS DISPONIBLES (simplificado - sin teléfono, sin total)
 // ============================================
 async function cargarPedidosDisponibles() {
     const container = document.getElementById('listaPedidosTrabajador');
@@ -159,12 +159,12 @@ async function cargarPedidosDisponibles() {
         
         let query = db
             .from('pedidos')
-            .select('*, clientes(nombre, telefono), detalle_pedido(*)')
+            .select('*, clientes(nombre), detalle_pedido(*)')
             .eq('estado', 'pendiente')
             .in('categoria_id', areasIds)
             .order('created_at', { ascending: true });
         
-        // Excluir pedidos que ya fueron rechazados por este trabajador
+        // Excluir pedidos ya rechazados por este trabajador
         if (rechazadosIds.length > 0) {
             query = query.not('id', 'in', `(${rechazadosIds.join(',')})`);
         }
@@ -188,7 +188,6 @@ async function cargarPedidosDisponibles() {
                             <th style="padding: 10px;">Código</th>
                             <th style="padding: 10px;">Cliente</th>
                             <th style="padding: 10px;">Productos</th>
-                            <th style="padding: 10px;">Total</th>
                             <th style="padding: 10px;">Fecha</th>
                             <th style="padding: 10px;">Acciones</th>
                         </tr>
@@ -205,10 +204,9 @@ async function cargarPedidosDisponibles() {
             html += `
                 <tr style="border-bottom: 1px solid #ddd;">
                     <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
-                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
+                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}</td>
                     <td style="padding: 8px;">${productosHtml || 'Sin productos'}</td>
-                    <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
-                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleString()}</small></td>
                     <td style="padding: 8px;">
                         <button class="btn btn-success" style="padding: 4px 8px; font-size: 11px;" onclick="tomarPedido(${p.id}, '${p.codigo}')">📋 Tomar</button>
                         <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-left: 4px;" onclick="rechazarPedidoTrabajador(${p.id}, '${p.codigo}')">👎 Rechazar</button>
@@ -233,7 +231,7 @@ async function cargarMisPedidos() {
     try {
         let query = db
             .from('pedidos')
-            .select('*, clientes(nombre, telefono), detalle_pedido(*)')
+            .select('*, clientes(nombre), detalle_pedido(*)')
             .eq('asignado_a', AppState.currentUser.id);
         
         if (filtroEstadoTrabajador !== 'todos') {
@@ -276,7 +274,6 @@ async function cargarMisPedidos() {
                             <th style="padding: 10px;">Código</th>
                             <th style="padding: 10px;">Cliente</th>
                             <th style="padding: 10px;">Productos</th>
-                            <th style="padding: 10px;">Total</th>
                             <th style="padding: 10px;">Estado</th>
                             <th style="padding: 10px;">Fecha Estimada</th>
                             <th style="padding: 10px;">Acciones</th>
@@ -296,9 +293,8 @@ async function cargarMisPedidos() {
             html += `
                 <tr style="border-bottom: 1px solid #ddd;">
                     <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
-                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
+                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}</td>
                     <td style="padding: 8px;">${productosHtml || 'Sin productos'}</td>
-                    <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
                     <td style="padding: 8px;">
                         <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedidoTrabajador(${p.id}, this.value)">
                             <option value="asignado" ${p.estado === 'asignado' ? 'selected' : ''}>📋 Asignado</option>
@@ -449,7 +445,7 @@ async function cambiarEstadoPedidoTrabajador(id, nuevoEstado) {
 async function verDetallePedidoTrabajador(id) {
     const { data: pedido } = await db
         .from('pedidos')
-        .select('*, clientes(nombre, telefono, direccion)')
+        .select('*, clientes(nombre)')
         .eq('id', id)
         .single();
     
@@ -460,7 +456,7 @@ async function verDetallePedidoTrabajador(id) {
     
     let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal?.toFixed(2) || '0.00'}`).join('\n') || 'Sin productos';
     
-    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nDirección: ${pedido.clientes?.direccion || 'N/A'}\nEstado: ${pedido.estado}\nTotal: Bs ${pedido.total}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}`);
+    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nEstado: ${pedido.estado}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}`);
 }
 
 function generarReciboPedido(id) {
