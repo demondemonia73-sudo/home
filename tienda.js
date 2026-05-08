@@ -8,7 +8,7 @@ let carrito = [];
 let filtroActual = 'todas';
 let clienteActual = null;
 let esClienteFrecuente = false;
-let tiposCorrea = []; // Nueva variable para tipos de correa
+let tiposCorrea = [];
 
 // Cargar datos al iniciar
 document.addEventListener('DOMContentLoaded', async function() {
@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
     
-    // Cargar tipos de correa desde la base de datos
     await cargarTiposCorrea();
     
     const telefonoInput = document.getElementById('telefonoCliente');
@@ -47,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-// Nueva función para cargar tipos de correa desde la base de datos
 async function cargarTiposCorrea() {
     try {
         const { data, error } = await db
@@ -62,7 +60,6 @@ async function cargarTiposCorrea() {
             tiposCorrea = data;
             console.log('✅ Tipos de correa cargados desde BD:', tiposCorrea.length);
         } else {
-            // Fallback en caso de que no haya datos
             tiposCorrea = [
                 { nombre: 'A', medida_mm: 13 },
                 { nombre: 'B', medida_mm: 17 },
@@ -73,7 +70,6 @@ async function cargarTiposCorrea() {
         }
     } catch (err) {
         console.error('Error cargando tipos de correa:', err);
-        // Fallback
         tiposCorrea = [
             { nombre: 'A', medida_mm: 13 },
             { nombre: 'B', medida_mm: 17 },
@@ -254,7 +250,6 @@ function renderProducto(producto) {
         const precioBase = producto.precio_venta;
         const precioPorCanalExtra = producto.precio_por_canal_extra || 0;
         
-        // Generar opciones de tipo de correa desde la base de datos
         const opcionesCorrea = tiposCorrea.map(t => 
             `<option value="${t.nombre}">${t.nombre} (${t.medida_mm}mm)</option>`
         ).join('');
@@ -357,6 +352,7 @@ function agregarAlCarrito(producto, cantidad = 1, especificaciones = null, preci
             cantidad: cantidad,
             especificaciones: especificaciones,
             unidad: producto.unidad_medida,
+            categoria_id: producto.categoria_id, // Nueva: guardar categoría
             esPedidoEspecial: especificaciones?.es_pedido_especial || false
         });
     }
@@ -386,7 +382,6 @@ function agregarAlCarritoConMedidas(producto) {
             tipoCorrea = `Personalizada: ${correaPersonalizada}mm`;
             esPedidoEspecial = true;
         } else {
-            // Buscar la medida del tipo de correa seleccionado
             const tipoEncontrado = tiposCorrea.find(t => t.nombre === tipoCorrea);
             if (tipoEncontrado) {
                 tipoCorrea = `${tipoCorrea} (${tipoEncontrado.medida_mm}mm)`;
@@ -597,6 +592,12 @@ async function realizarPedido() {
         
         const pedidoId = pedido[0].id;
         
+        // Obtener la categoría del primer producto del carrito
+        const primeraCategoria = carrito[0]?.categoria_id || null;
+        if (primeraCategoria) {
+            await db.from('pedidos').update({ categoria_id: primeraCategoria }).eq('id', pedidoId);
+        }
+        
         for (const item of carrito) {
             const espec = item.especificaciones ? JSON.stringify(item.especificaciones) : null;
             let descripcionExtra = '';
@@ -623,6 +624,7 @@ async function realizarPedido() {
                 pedido_id: pedidoId,
                 tipo: 'producto',
                 producto_id: item.id,
+                categoria_id: item.categoria_id || null, // Guardar categoría en detalle
                 descripcion: item.nombre + descripcionExtra,
                 cantidad: item.cantidad,
                 precio_unitario: item.precio,
