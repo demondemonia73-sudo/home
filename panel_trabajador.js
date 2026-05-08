@@ -13,7 +13,6 @@ async function cargarPanelTrabajador() {
     
     console.log('👨‍🔧 Cargando panel de trabajador:', AppState.currentUser.nombre);
     
-    // Obtener áreas del trabajador
     await cargarAreasTrabajador();
     
     const tabsContent = document.getElementById('tabsContent');
@@ -24,20 +23,17 @@ async function cargarPanelTrabajador() {
                 <button id="btnRefrescar" class="btn btn-primary">🔄 Refrescar</button>
             </div>
             
-            <!-- Pestañas internas del trabajador -->
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
                 <button id="btnMisPedidos" class="tab-btn-interno active" data-tab="mis">📋 Mis Pedidos</button>
                 <button id="btnPedidosDisponibles" class="tab-btn-interno" data-tab="disponibles">📦 Pedidos Disponibles</button>
             </div>
             
-            <!-- Lista de pedidos -->
             <div id="listaPedidosTrabajador">
                 <div class="loading">Cargando pedidos...</div>
             </div>
         </div>
     `;
     
-    // Estilos para pestañas internas
     let style = document.querySelector('#panelTrabajadorStyle');
     if (!style) {
         style = document.createElement('style');
@@ -60,7 +56,6 @@ async function cargarPanelTrabajador() {
         document.head.appendChild(style);
     }
     
-    // Asignar eventos
     document.getElementById('btnRefrescar').onclick = () => cargarVistaActual();
     document.getElementById('btnMisPedidos').onclick = () => cambiarVista('mis');
     document.getElementById('btnPedidosDisponibles').onclick = () => cambiarVista('disponibles');
@@ -111,6 +106,36 @@ async function cargarAreasTrabajador() {
     }
 }
 
+// ============================================
+// RECHAZAR PEDIDO (solo para el trabajador)
+// ============================================
+async function rechazarPedidoTrabajador(id, codigo) {
+    const motivo = prompt(`❌ ¿Por qué rechazas el pedido ${codigo}?\n\nEste pedido dejará de aparecer en tu lista, pero otros trabajadores podrán tomarlo.\n\nMotivo:`);
+    
+    if (!motivo || motivo.trim() === '') {
+        alert('Debes ingresar un motivo');
+        return;
+    }
+    
+    try {
+        await db.from('rechazos_trabajadores').insert([{
+            pedido_id: id,
+            trabajador_id: AppState.currentUser.id,
+            motivo: motivo.trim()
+        }]);
+        
+        alert(`✅ Pedido ${codigo} rechazado. Ya no aparecerá en tu lista.`);
+        await cargarPedidosDisponibles();
+        await cargarMisPedidos();
+        
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
+
+// ============================================
+// PEDIDOS DISPONIBLES (excluyendo los rechazados por este trabajador)
+// ============================================
 async function cargarPedidosDisponibles() {
     const container = document.getElementById('listaPedidosTrabajador');
     if (!container) return;
@@ -124,12 +149,27 @@ async function cargarPedidosDisponibles() {
             return;
         }
         
-        const { data, error } = await db
+        // Obtener IDs de pedidos que este trabajador ya rechazó
+        const { data: misRechazos } = await db
+            .from('rechazos_trabajadores')
+            .select('pedido_id')
+            .eq('trabajador_id', AppState.currentUser.id);
+        
+        const rechazadosIds = misRechazos?.map(r => r.pedido_id) || [];
+        
+        let query = db
             .from('pedidos')
             .select('*, clientes(nombre, telefono), detalle_pedido(*)')
             .eq('estado', 'pendiente')
             .in('categoria_id', areasIds)
             .order('created_at', { ascending: true });
+        
+        // Excluir pedidos que ya fueron rechazados por este trabajador
+        if (rechazadosIds.length > 0) {
+            query = query.not('id', 'in', `(${rechazadosIds.join(',')})`);
+        }
+        
+        const { data, error } = await query;
         
         if (error) throw error;
         
@@ -142,15 +182,15 @@ async function cargarPedidosDisponibles() {
         
         let html = `
             <div class="table-container">
-                <table>
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Cliente</th>
-                            <th>Productos</th>
-                            <th>Total</th>
-                            <th>Fecha</th>
-                            <th>Acciones</th>
+                        <tr style="background: #1a73e8; color: white;">
+                            <th style="padding: 10px;">Código</th>
+                            <th style="padding: 10px;">Cliente</th>
+                            <th style="padding: 10px;">Productos</th>
+                            <th style="padding: 10px;">Total</th>
+                            <th style="padding: 10px;">Fecha</th>
+                            <th style="padding: 10px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -163,20 +203,21 @@ async function cargarPedidosDisponibles() {
             `).join('');
             
             html += `
-                <tr>
-                    <td><strong>${p.codigo}</strong></td>
-                    <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
-                    <td>${productosHtml || 'Sin productos'}</td>
-                    <td><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
-                    <td><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
-                    <td>
-                        <button class="btn btn-success" style="padding: 0.3rem 0.6rem;" onclick="tomarPedido(${p.id}, '${p.codigo}')">📋 Tomar Pedido</button>
-                    </td>
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
+                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
+                    <td style="padding: 8px;">${productosHtml || 'Sin productos'}</td>
+                    <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
+                    <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                    <td style="padding: 8px;">
+                        <button class="btn btn-success" style="padding: 4px 8px; font-size: 11px;" onclick="tomarPedido(${p.id}, '${p.codigo}')">📋 Tomar</button>
+                        <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-left: 4px;" onclick="rechazarPedidoTrabajador(${p.id}, '${p.codigo}')">👎 Rechazar</button>
+                    </td
                 </tr>
             `;
         }
         
-        html += `</tbody> FullEDMFunc</div>`;
+        html += `</tbody>;</div>`;
         container.innerHTML = html;
         
     } catch (err) {
@@ -229,16 +270,16 @@ async function cargarMisPedidos() {
         
         let html = filtrosHtml + `
             <div class="table-container">
-                <table>
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Cliente</th>
-                            <th>Productos</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                            <th>Fecha Estimada</th>
-                            <th>Acciones</th>
+                        <tr style="background: #1a73e8; color: white;">
+                            <th style="padding: 10px;">Código</th>
+                            <th style="padding: 10px;">Cliente</th>
+                            <th style="padding: 10px;">Productos</th>
+                            <th style="padding: 10px;">Total</th>
+                            <th style="padding: 10px;">Estado</th>
+                            <th style="padding: 10px;">Fecha Estimada</th>
+                            <th style="padding: 10px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -253,31 +294,31 @@ async function cargarMisPedidos() {
             `).join('');
             
             html += `
-                <tr>
-                    <td><strong>${p.codigo}</strong></td>
-                    <td>${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
-                    <td>${productosHtml || 'Sin productos'}</td>
-                    <td><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
-                    <td>
-                        <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 0.2rem;" onchange="cambiarEstadoPedidoTrabajador(${p.id}, this.value)">
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
+                    <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}<br><small>${p.clientes?.telefono || ''}</small></td>
+                    <td style="padding: 8px;">${productosHtml || 'Sin productos'}</td>
+                    <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong></td>
+                    <td style="padding: 8px;">
+                        <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedidoTrabajador(${p.id}, this.value)">
                             <option value="asignado" ${p.estado === 'asignado' ? 'selected' : ''}>📋 Asignado</option>
                             <option value="en_progreso" ${p.estado === 'en_progreso' ? 'selected' : ''}>⚙️ En progreso</option>
                             <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
                         </select>
                     </td>
-                    <td>
+                    <td style="padding: 8px;">
                         ${p.fecha_estimada_entrega ? new Date(p.fecha_estimada_entrega).toLocaleDateString() : 'Sin fecha'}
-                        <button class="btn" style="background: #17a2b8; padding: 0.2rem 0.4rem; font-size: 0.7rem; margin-left: 0.3rem;" onclick="agregarFechaEstimada(${p.id})">📅</button>
+                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="agregarFechaEstimada(${p.id})">📅</button>
                     </td>
-                    <td>
-                        <button class="btn" style="background: #ffc107; color: #333; padding: 0.3rem 0.5rem; margin-bottom: 0.2rem;" onclick="verDetallePedidoTrabajador(${p.id})">👁️ Ver</button>
-                        ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 0.3rem 0.5rem;" onclick="generarReciboPedido(${p.id})">📄 Recibo</button>` : ''}
+                    <td style="padding: 8px;">
+                        <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedidoTrabajador(${p.id})">👁️ Ver</button>
+                        ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="generarReciboPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
                 </tr>
             `;
         }
         
-        html += `</tbody></table></div>`;
+        html += `</tbody>;</div>`;
         container.innerHTML = html;
         
         const btnTodos = document.getElementById('filtroTodosTra');
@@ -434,3 +475,4 @@ window.verDetallePedidoTrabajador = verDetallePedidoTrabajador;
 window.generarReciboPedido = generarReciboPedido;
 window.cargarPedidosDisponibles = cargarPedidosDisponibles;
 window.cargarPanelTrabajador = cargarPanelTrabajador;
+window.rechazarPedidoTrabajador = rechazarPedidoTrabajador;
