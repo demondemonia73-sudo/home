@@ -6,7 +6,7 @@ let pedidosData = [];
 let filtroEstado = 'todos';
 
 // ============================================
-// CONSULTA DE PEDIDO (CLIENTE - desde index.html) - MEJORADA
+// CONSULTA DE PEDIDO (CLIENTE - desde index.html) - CORREGIDA
 // ============================================
 
 async function consultarPedido() {
@@ -36,28 +36,16 @@ async function consultarPedido() {
             if (data) pedidos = [data];
             
         } 
-        // Si no es código, buscar por nombre del cliente
+        // Si no es código, buscar por nombre del cliente (búsqueda directa sin maybeSingle)
         else {
-            // Primero obtener el cliente por nombre y teléfono
-            const { data: cliente, error: clienteError } = await db
-                .from('clientes')
-                .select('id')
-                .eq('nombre', codigo)
-                .eq('telefono', telefono)
-                .maybeSingle();
+            const { data: pedidosData, error: pedidosError } = await db
+                .from('pedidos')
+                .select('*, clientes(*)')
+                .eq('clientes.telefono', telefono)
+                .ilike('clientes.nombre', `%${codigo}%`);
             
-            if (clienteError) throw clienteError;
-            
-            if (cliente) {
-                const { data: pedidosCliente, error: pedidosError } = await db
-                    .from('pedidos')
-                    .select('*, clientes(*)')
-                    .eq('cliente_id', cliente.id)
-                    .order('created_at', { ascending: false });
-                
-                if (pedidosError) throw pedidosError;
-                pedidos = pedidosCliente || [];
-            }
+            if (pedidosError) throw pedidosError;
+            pedidos = pedidosData || [];
         }
         
         if (pedidos.length === 0) {
@@ -164,7 +152,7 @@ function mostrarNuevoPedidoForm() {
 }
 
 // ============================================
-// GESTIÓN DE PEDIDOS (ADMIN) - RESTANTE IGUAL
+// GESTIÓN DE PEDIDOS (ADMIN)
 // ============================================
 
 async function cargarPedidos() {
@@ -379,7 +367,7 @@ async function refrescarListaPedidos() {
                             </td>
                             <td style="padding: 8px; text-align: center;">
                                 ${rechazoCount > 0 ? `<span style="color: #dc3545; cursor: pointer; text-decoration: underline;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
-                            <td>
+                            </td>
                             <td style="padding: 8px;">${entregaShow}</td>
                             <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
                             <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
