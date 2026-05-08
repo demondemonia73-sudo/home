@@ -36,6 +36,24 @@ async function consultarPedido() {
             return;
         }
         
+        // ============================================
+        // RECHAZO DEFINITIVO - Cliente ve motivo
+        // ============================================
+        if (pedido.rechazo_definitivo === true || pedido.estado === 'rechazado_definitivo') {
+            resultadoDiv.innerHTML = `
+                <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
+                    <h3>📄 Pedido ${pedido.codigo}</h3>
+                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
+                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
+                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: #dc3545; color: white;">❌ Cancelado</span></p>
+                    <p><strong>⚠️ Motivo de la cancelación:</strong> ${pedido.motivo_rechazo_definitivo || 'No especificado'}</p>
+                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total.toFixed(2)}</strong></p>
+                    <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
+                </div>
+            `;
+            return;
+        }
+        
         // PEDIDO ENTREGADO - NO SE MUESTRA DETALLE
         if (pedido.estado === 'entregado') {
             resultadoDiv.innerHTML = `
@@ -218,6 +236,34 @@ function aplicarFiltro(estado) {
     refrescarListaPedidos();
 }
 
+// ============================================
+// RECHAZO DEFINITIVO (ADMIN)
+// ============================================
+async function rechazarDefinitivo(id, codigo) {
+    const motivo = prompt(`❌ RECHAZO DEFINITIVO del pedido ${codigo}\n\nEste pedido será cancelado para siempre. El cliente verá este motivo.\n\nMotivo:`);
+    
+    if (!motivo || motivo.trim() === '') {
+        alert('Debes ingresar un motivo');
+        return;
+    }
+    
+    if (!confirm(`⚠️ ¿Cancelar DEFINITIVAMENTE el pedido ${codigo}?\nMotivo: ${motivo}\n\nEl cliente será notificado.`)) return;
+    
+    try {
+        await db.from('pedidos').update({ 
+            estado: 'rechazado_definitivo',
+            rechazo_definitivo: true,
+            motivo_rechazo_definitivo: motivo
+        }).eq('id', id);
+        
+        alert(`✅ Pedido ${codigo} cancelado definitivamente`);
+        await refrescarListaPedidos();
+        
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
+
 async function refrescarListaPedidos() {
     const listaDiv = document.getElementById('listaPedidos');
     if (!listaDiv) return;
@@ -243,20 +289,33 @@ async function refrescarListaPedidos() {
             return;
         }
         
+        // Obtener conteo de rechazos por pedido
+        const { data: rechazosCount } = await db
+            .from('rechazos_trabajadores')
+            .select('pedido_id');
+        
+        const rechazoCountMap = {};
+        if (rechazosCount) {
+            rechazosCount.forEach(r => {
+                rechazoCountMap[r.pedido_id] = (rechazoCountMap[r.pedido_id] || 0) + 1;
+            });
+        }
+        
         let html = `
             <div class="table-container">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="background: #1a73e8; color: white;">
-                            <th style="padding: 10px; text-align: left;">Código</th>
-                            <th style="padding: 10px; text-align: left;">Cliente</th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Total</th>
-                            <th style="padding: 10px; text-align: left;">Estado</th>
-                            <th style="padding: 10px; text-align: left;">Entrega</th>
-                            <th style="padding: 10px; text-align: left;">Adelanto</th>
-                            <th style="padding: 10px; text-align: left;">Fecha</th>
-                            <th style="padding: 10px; text-align: left;">Acciones</th>
+                            <th style="padding: 10px;">Código</th>
+                            <th style="padding: 10px;">Cliente</th>
+                            <th style="padding: 10px;">Teléfono</th>
+                            <th style="padding: 10px;">Total</th>
+                            <th style="padding: 10px;">Estado</th>
+                            <th style="padding: 10px;">Rechazos</th>
+                            <th style="padding: 10px;">Entrega</th>
+                            <th style="padding: 10px;">Adelanto</th>
+                            <th style="padding: 10px;">Fecha</th>
+                            <th style="padding: 10px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -271,6 +330,7 @@ async function refrescarListaPedidos() {
                 'entrega_tienda': '🏪 Tienda'
             };
             const entregaShow = p.tipo_entrega ? entregaText[p.tipo_entrega] || p.tipo_entrega : 'N/A';
+            const rechazoCount = rechazoCountMap[p.id] || 0;
             
             html += `
                 <tr style="border-bottom: 1px solid #ddd;">
@@ -287,19 +347,24 @@ async function refrescarListaPedidos() {
                             <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
                             <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
                         </select>
-                    </td>
+                        ${p.rechazo_definitivo ? '<br><span style="color: red;">CANCELADO</span>' : ''}
+                    </td
+                    <td style="padding: 8px; text-align: center;">
+                        ${rechazoCount > 0 ? `<span style="color: #dc3545;">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
+                    </td
                     <td style="padding: 8px;">${entregaShow}</td>
                     <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
                     <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
                     <td style="padding: 8px;">
                         <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
                         ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
-                        ${p.estado === 'pendiente' && !p.requiere_cotizacion ? `<button class="btn" style="background: #dc3545; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
+                        ${p.estado === 'pendiente' && !p.requiere_cotizacion && !p.rechazo_definitivo ? `<button class="btn" style="background: #dc3545; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
+                        ${p.estado === 'pendiente' && !p.rechazo_definitivo ? `<button class="btn" style="background: #6c757d; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarDefinitivo(${p.id}, '${p.codigo}')">❌ Rechazar Definitivo</button>` : ''}
                         ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
                     </td>
                 </tr>
                 <tr style="background: #f9f9f9;">
-                    <td colspan="9" style="padding: 8px;">
+                    <td colspan="10" style="padding: 8px;">
                         <details>
                             <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
                             <div style="margin-top: 8px; padding-left: 16px;">
@@ -488,3 +553,4 @@ window.rechazarPedido = rechazarPedido;
 window.asignarPrecioEspecial = asignarPrecioEspecial;
 window.aceptarCotizacion = aceptarCotizacion;
 window.cancelarCotizacion = cancelarCotizacion;
+window.rechazarDefinitivo = rechazarDefinitivo;
