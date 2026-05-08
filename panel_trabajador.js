@@ -85,24 +85,41 @@ async function cargarPanelTrabajador() {
     await cargarMisPedidos();
 }
 
+// ============================================
+// CARGAR ÁREAS DEL TRABAJADOR (CORREGIDO)
+// ============================================
 async function cargarAreasTrabajador() {
     try {
-        const { data, error } = await db
+        // Primero obtener los IDs de las áreas del trabajador
+        const { data: usuarioAreas, error: error1 } = await db
             .from('usuario_areas')
-            .select('area_id, areas(nombre, icono)')
+            .select('area_id')
             .eq('usuario_id', AppState.currentUser.id);
         
-        if (error) throw error;
+        if (error1) throw error1;
         
-        areasTrabajador = data?.map(item => ({
-            id: item.area_id,
-            nombre: item.areas?.nombre,
-            icono: item.areas?.icono
-        })) || [];
+        if (!usuarioAreas || usuarioAreas.length === 0) {
+            areasTrabajador = [];
+            console.log('No hay áreas asignadas para este trabajador');
+            return;
+        }
         
+        const areaIds = usuarioAreas.map(ua => ua.area_id);
+        
+        // Luego obtener los detalles de las áreas
+        const { data: areas, error: error2 } = await db
+            .from('areas')
+            .select('id, nombre, icono')
+            .in('id', areaIds);
+        
+        if (error2) throw error2;
+        
+        areasTrabajador = areas || [];
         console.log('Áreas del trabajador:', areasTrabajador);
+        
     } catch (err) {
         console.error('Error cargando áreas:', err);
+        areasTrabajador = [];
     }
 }
 
@@ -134,7 +151,7 @@ async function rechazarPedidoTrabajador(id, codigo) {
 }
 
 // ============================================
-// PEDIDOS DISPONIBLES (simplificado - sin teléfono, sin total)
+// PEDIDOS DISPONIBLES
 // ============================================
 async function cargarPedidosDisponibles() {
     const container = document.getElementById('listaPedidosTrabajador');
