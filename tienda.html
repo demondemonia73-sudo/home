@@ -1,205 +1,839 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>TallerTotal - Catálogo de Productos</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
-    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Estilos específicos para la tienda mejoradas */
-        .catalogo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        /* ========== ESTILOS ALIBABA PARA TIENDA ========== */
+
+        .tienda-layout {
+            display: flex;
             gap: 1.5rem;
-            margin-top: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        @media (max-width: 768px) {
-            .catalogo-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .producto-tarjeta {
-            background: white;
-            border-radius: 12px;
-            padding: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-            border: 1px solid #e0e0e0;
-        }
-        .producto-tarjeta:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .producto-precio {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #28a745;
-            margin: 0.5rem 0;
-        }
-        .producto-stock {
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-        .btn-carrito {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 0.5rem;
-        }
-        .btn-carrito:hover {
-            background: #0d47a1;
-        }
-        .btn-carrito:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .carrito {
+
+        /* Sidebar de filtros */
+        .tienda-sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            height: fit-content;
             position: sticky;
-            top: 20px;
-            background: white;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid #1a73e8;
+            top: calc(var(--header-height) + 1rem);
         }
-        .carrito-item {
+
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .sidebar-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-body);
+            color: var(--primary-500);
+        }
+
+        .sidebar-item.active {
+            background: var(--primary-50);
+            color: var(--primary-600);
+            font-weight: 600;
+        }
+
+        .sidebar-item .cat-icon {
+            font-size: 1.1rem;
+        }
+
+        .sidebar-item .cat-count {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-body);
+            padding: 0.15rem 0.5rem;
+            border-radius: var(--radius-full);
+        }
+
+        /* Barra superior */
+        .tienda-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 1.25rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
         }
-        .carrito-total {
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-top: 1rem;
-            padding-top: 0.5rem;
-            border-top: 2px solid #1a73e8;
+
+        .tienda-resultados {
+            font-size: 0.875rem;
+            color: var(--text-muted);
         }
-        .filtro-categoria {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            margin: 0.25rem;
-            background: #e0e0e0;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
+
+        .tienda-resultados strong {
+            color: var(--text-primary);
         }
-        .filtro-categoria.active {
-            background: #1a73e8;
-            color: white;
-        }
-        .medidas-especiales {
-            background: #fff3cd;
-            padding: 0.75rem;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            margin: 0.5rem 0;
-        }
-        .medidas-input {
+
+        .tienda-vistas {
             display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
+            gap: 0.25rem;
         }
-        .medidas-input input, .medidas-input select {
-            flex: 1;
-            padding: 0.3rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+
+        .vista-btn {
+            padding: 0.4rem 0.75rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
             font-size: 0.8rem;
+            color: var(--text-muted);
+            transition: all var(--transition-fast);
         }
-        .campo-medida {
-            margin-bottom: 10px;
-        }
-        .campo-medida label {
-            font-size: 0.75rem;
-            font-weight: 500;
-            display: block;
-            margin-bottom: 3px;
-        }
-        .badge-frecuente {
-            background: #17a2b8;
+
+        .vista-btn:hover, .vista-btn.active {
+            background: var(--primary-500);
             color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
+            border-color: var(--primary-500);
+        }
+
+        /* Grid de productos estilo Alibaba */
+        .alibaba-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .alibaba-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            transition: all var(--transition);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .alibaba-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-300);
+        }
+
+        .alibaba-card:hover .alibaba-img {
+            transform: scale(1.05);
+        }
+
+        .alibaba-img-wrap {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--bg-body), var(--border-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alibaba-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .alibaba-img-placeholder {
+            font-size: 4rem;
+            opacity: 0.3;
+        }
+
+        .alibaba-badge-stock {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: var(--radius-sm);
             font-size: 0.7rem;
+            font-weight: 700;
+            z-index: 2;
+        }
+
+        .alibaba-badge-stock.en-stock {
+            background: var(--success);
+            color: white;
+        }
+
+        .alibaba-badge-stock.bajo-stock {
+            background: var(--warning);
+            color: white;
+        }
+
+        .alibaba-badge-stock.sin-stock {
+            background: var(--danger);
+            color: white;
+        }
+
+        .alibaba-badge-categoria {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            color: white;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        .alibaba-body {
+            padding: 1rem;
+        }
+
+        .alibaba-precio {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--danger);
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .alibaba-precio .moneda {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .alibaba-precio .unidad {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .alibaba-nombre {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 2.6em;
+        }
+
+        .alibaba-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .alibaba-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .alibaba-stock {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .alibaba-stock .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .alibaba-stock .dot.bajo {
+            background: var(--warning);
+        }
+
+        .alibaba-stock .dot.agotado {
+            background: var(--danger);
+        }
+
+        .alibaba-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .alibaba-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .alibaba-btn:disabled {
+            background: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Modal de producto estilo Alibaba */
+        .producto-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--bg-modal);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .producto-modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .producto-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+
+        .producto-modal-img {
+            position: relative;
+            background: linear-gradient(135deg, var(--bg-body), var(--border-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+        }
+
+        .producto-modal-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+        }
+
+        .producto-modal-info {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .producto-modal-categoria {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.75rem;
+            background: var(--primary-100);
+            color: var(--primary-700);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            width: fit-content;
+            margin-bottom: 1rem;
+        }
+
+        [data-theme="dark"] .producto-modal-categoria {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary-300);
+        }
+
+        .producto-modal-nombre {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .producto-modal-precio {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--danger);
+            margin-bottom: 1rem;
+        }
+
+        .producto-modal-precio .moneda {
+            font-size: 1.1rem;
+        }
+
+        .producto-modal-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .producto-modal-specs {
+            background: var(--bg-body);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .producto-modal-specs h4 {
+            font-size: 0.875rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .spec-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.85rem;
+        }
+
+        .spec-row:last-child {
+            border-bottom: none;
+        }
+
+        .spec-label {
+            color: var(--text-muted);
+        }
+
+        .spec-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .producto-modal-actions {
+            margin-top: auto;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .producto-modal-actions .btn {
+            flex: 1;
+            padding: 0.875rem;
+            font-size: 0.95rem;
+        }
+
+        /* Carrito lateral estilo Alibaba */
+        .carrito-alibaba {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            position: sticky;
+            top: calc(var(--header-height) + 1rem);
+            box-shadow: var(--shadow);
+        }
+
+        .carrito-alibaba-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .carrito-alibaba-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .carrito-alibaba-count {
+            background: var(--primary-500);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .carrito-alibaba-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .carrito-alibaba-item-img {
+            width: 50px;
+            height: 50px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .carrito-alibaba-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .carrito-alibaba-item-nombre {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.15rem;
+        }
+
+        .carrito-alibaba-item-detalle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .carrito-alibaba-item-precio {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--danger);
+        }
+
+        .carrito-alibaba-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .carrito-alibaba-total-label {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .carrito-alibaba-total-valor {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--danger);
+        }
+
+        .carrito-alibaba-checkout {
+            margin-top: 1rem;
+        }
+
+        .carrito-alibaba-checkout .btn {
+            width: 100%;
+            padding: 0.875rem;
+            font-size: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .tienda-layout {
+                flex-direction: column;
+            }
+            .tienda-sidebar {
+                width: 100%;
+                position: static;
+            }
+            .producto-modal {
+                grid-template-columns: 1fr;
+            }
+            .producto-modal-img {
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+                min-height: 250px;
+            }
+            .producto-modal-img img {
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .alibaba-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            .alibaba-img-wrap {
+                height: 160px;
+            }
+            .alibaba-precio {
+                font-size: 1.1rem;
+            }
+            .alibaba-nombre {
+                font-size: 0.85rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .alibaba-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>🔧 TallerTotal - Catálogo de Productos</h1>
-            <div class="user-info">
-                <a href="index.html" style="color: white; text-decoration: none;">🔐 Panel Admin</a>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🔧</div>
+                <div class="sidebar-brand">Taller<span>Total</span></div>
             </div>
-        </header>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Navegación</div>
+                    <a href="index.html" class="nav-item">
+                        <span class="nav-icon">🏠</span>
+                        <span class="nav-text">Inicio</span>
+                    </a>
+                    <a href="tienda.html" class="nav-item active">
+                        <span class="nav-icon">🛒</span>
+                        <span class="nav-text">Catálogo</span>
+                    </a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="themeToggleBtn" class="theme-toggle" style="width:100%; border-radius:var(--radius-sm);" onclick="ThemeManager.toggle()">
+                    🌙 Cambiar tema
+                </button>
+            </div>
+        </aside>
 
-        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
-            <!-- Columna izquierda: Catálogo -->
-            <div style="flex: 2; min-width: 250px;">
-                <div class="card">
-                    <h2>📦 Nuestros Productos</h2>
-                    <div id="filtrosContainer" style="margin: 1rem 0; flex-wrap: wrap; display: flex;"></div>
-                    <div id="catalogoContainer" class="catalogo-grid">
-                        <div class="loading">Cargando productos...</div>
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="btn btn-ghost" style="padding:0.5rem;" onclick="toggleSidebar()">
+                        <span style="font-size:1.25rem;">☰</span>
+                    </button>
+                    <div>
+                        <h1 class="page-title">🛒 Catálogo de Productos</h1>
+                        <div class="breadcrumb">Inicio / Catálogo</div>
                     </div>
                 </div>
-            </div>
+                <div class="header-right">
+                    <a href="index.html" class="btn btn-secondary btn-sm">🏠 Panel Admin</a>
+                </div>
+            </header>
 
-            <!-- Columna derecha: Carrito de compras -->
-            <div style="flex: 1; min-width: 280px;">
-                <div class="carrito">
-                    <h3>🛒 Pedido Actual</h3>
-                    <div id="carritoItems">
-                        <p class="text-muted">No hay productos agregados</p>
-                    </div>
-                    <div id="carritoTotal" class="carrito-total">Total: Bs 0.00</div>
-                    
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <label>Nombre de la tienda/cliente *</label>
-                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Ferretería Central">
-                    </div>
-                    <div class="form-group">
-                        <label>Teléfono de contacto *</label>
-                        <input type="tel" id="telefonoCliente" class="form-control" placeholder="0987654321">
-                    </div>
-                    
-                    <!-- Opciones de entrega (se muestran si el cliente es frecuente) -->
-                    <div id="divOpcionesEntrega" style="display: none;">
-                        <div class="form-group">
-                            <label>🚚 Opciones de entrega</label>
-                            <select id="tipoEntrega" class="form-control">
-                                <option value="retiro_taller">📦 Retiro en taller</option>
-                                <option value="envio_domicilio">🚚 Envío a domicilio</option>
-                                <option value="entrega_tienda">🏪 Entrega en tienda</option>
-                            </select>
-                        </div>
-                        <div id="divDireccionEnvio" style="display: none;">
-                            <div class="form-group">
-                                <label>Dirección de envío</label>
-                                <textarea id="direccionEnvio" class="form-control" rows="2" placeholder="Ingresa la dirección completa"></textarea>
+            <div class="content-area">
+                <div class="tienda-layout">
+                    <!-- Sidebar de filtros -->
+                    <aside class="tienda-sidebar">
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">📂 Categorías</div>
+                            <div id="sidebarCategorias">
+                                <div class="sidebar-item active" onclick="filtrarTienda('todas')">
+                                    <span class="cat-icon">📦</span>
+                                    <span>Todos los productos</span>
+                                    <span class="cat-count" id="countTodos">0</span>
+                                </div>
                             </div>
                         </div>
+
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">💰 Rango de precio</div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <input type="number" id="precioMin" class="form-control" placeholder="Min" style="font-size:0.8rem;">
+                                <span style="color:var(--text-muted);">-</span>
+                                <input type="number" id="precioMax" class="form-control" placeholder="Max" style="font-size:0.8rem;">
+                            </div>
+                            <button class="btn btn-primary btn-sm" style="width:100%; margin-top:0.5rem;" onclick="aplicarFiltroPrecio()">Aplicar</button>
+                        </div>
+
+                        <div class="sidebar-section">
+                            <div class="sidebar-title">📊 Disponibilidad</div>
+                            <label class="form-check" style="margin-bottom:0.5rem;">
+                                <input type="checkbox" id="soloStock" onchange="aplicarFiltros()">
+                                <span>Solo con stock</span>
+                            </label>
+                        </div>
+                    </aside>
+
+                    <!-- Contenido principal -->
+                    <div style="flex:1; min-width:0;">
+                        <!-- Toolbar -->
+                        <div class="tienda-toolbar">
+                            <div class="tienda-resultados">
+                                Mostrando <strong id="resultCount">0</strong> productos
+                            </div>
+                            <div class="tienda-vistas">
+                                <button class="vista-btn active" onclick="cambiarVista('grid')">⊞ Grid</button>
+                                <button class="vista-btn" onclick="cambiarVista('list')">☰ Lista</button>
+                            </div>
+                        </div>
+
+                        <!-- Grid de productos -->
+                        <div id="catalogoContainer" class="alibaba-grid">
+                            <div class="loading" style="grid-column:1/-1;"><div class="spinner"></div><p>Cargando productos...</p></div>
+                        </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>Dirección de referencia</label>
-                        <textarea id="direccionCliente" class="form-control" rows="2" placeholder="Dirección o punto de referencia"></textarea>
+
+                    <!-- Carrito lateral -->
+                    <aside style="width:320px; flex-shrink:0;">
+                        <div class="carrito-alibaba">
+                            <div class="carrito-alibaba-header">
+                                <h3>🛒 Tu Pedido</h3>
+                                <span id="carritoCount" class="carrito-alibaba-count">0</span>
+                            </div>
+
+                            <div id="carritoItems">
+                                <div class="empty-state" style="padding:1.5rem;">
+                                    <div class="empty-state-icon" style="font-size:2rem;">🛒</div>
+                                    <div class="empty-state-title" style="font-size:0.9rem;">Carrito vacío</div>
+                                    <div class="empty-state-desc" style="font-size:0.8rem;">Agrega productos del catálogo</div>
+                                </div>
+                            </div>
+
+                            <div id="carritoTotal" class="carrito-alibaba-total">
+                                <span class="carrito-alibaba-total-label">Total:</span>
+                                <span class="carrito-alibaba-total-valor">Bs 0.00</span>
+                            </div>
+
+                            <div class="carrito-alibaba-checkout">
+                                <div class="form-group" style="margin-top:1rem;">
+                                    <label style="font-size:0.8rem;">Nombre completo *</label>
+                                    <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Ferretería Central" style="font-size:0.85rem;">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size:0.8rem;">Teléfono *</label>
+                                    <input type="tel" id="telefonoCliente" class="form-control" placeholder="0987654321" style="font-size:0.85rem;">
+                                    <div class="form-hint">Si eres cliente frecuente, se detectará automáticamente</div>
+                                </div>
+
+                                <div id="divOpcionesEntrega" class="hidden">
+                                    <div class="form-group">
+                                        <label style="font-size:0.8rem;">🚚 Opciones de entrega</label>
+                                        <select id="tipoEntrega" class="form-control" style="font-size:0.85rem;">
+                                            <option value="retiro_taller">🏭 Retiro en taller</option>
+                                            <option value="envio_domicilio">🚚 Envío a domicilio</option>
+                                            <option value="entrega_tienda">🏪 Entrega en tienda</option>
+                                        </select>
+                                    </div>
+                                    <div id="divDireccionEnvio" class="hidden">
+                                        <div class="form-group">
+                                            <label style="font-size:0.8rem;">Dirección de envío</label>
+                                            <textarea id="direccionEnvio" class="form-control" rows="2" placeholder="Dirección completa..." style="font-size:0.85rem;"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label style="font-size:0.8rem;">Dirección de referencia</label>
+                                    <textarea id="direccionCliente" class="form-control" rows="2" placeholder="Punto de referencia..." style="font-size:0.85rem;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size:0.8rem;">Notas adicionales</label>
+                                    <textarea id="notasPedido" class="form-control" rows="2" placeholder="Especificaciones..." style="font-size:0.85rem;"></textarea>
+                                </div>
+                                <button id="btnRealizarPedido" class="btn btn-success btn-block" onclick="realizarPedido()" style="margin-top:0.5rem;">✅ Confirmar Pedido</button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de producto -->
+    <div id="productoModal" class="producto-modal-overlay" onclick="cerrarModalProducto(event)">
+        <div class="producto-modal" onclick="event.stopPropagation()">
+            <div class="producto-modal-img" id="modalImgContainer">
+                <div style="font-size:6rem; opacity:0.2;">📦</div>
+            </div>
+            <div class="producto-modal-info">
+                <div class="producto-modal-categoria" id="modalCategoria">📦 Categoría</div>
+                <h2 class="producto-modal-nombre" id="modalNombre">Nombre del producto</h2>
+                <div class="producto-modal-precio">
+                    <span class="moneda">Bs</span>
+                    <span id="modalPrecio">0.00</span>
+                    <span class="unidad" id="modalUnidad">/ pieza</span>
+                </div>
+                <p class="producto-modal-desc" id="modalDesc">Descripción del producto...</p>
+
+                <div class="producto-modal-specs">
+                    <h4>📋 Especificaciones</h4>
+                    <div class="spec-row">
+                        <span class="spec-label">Stock disponible</span>
+                        <span class="spec-value" id="modalStock">0 unidades</span>
                     </div>
-                    <div class="form-group">
-                        <label>Notas adicionales</label>
-                        <textarea id="notasPedido" class="form-control" rows="2" placeholder="Especificaciones adicionales..."></textarea>
+                    <div class="spec-row">
+                        <span class="spec-label">Unidad de medida</span>
+                        <span class="spec-value" id="modalUnidadMedida">Pieza</span>
                     </div>
-                    <button id="btnRealizarPedido" class="btn btn-success" style="width: 100%; margin-top: 1rem;">✅ Realizar Pedido</button>
+                    <div class="spec-row">
+                        <span class="spec-label">Precio compra</span>
+                        <span class="spec-value" id="modalPrecioCompra">Bs 0.00</span>
+                    </div>
+                </div>
+
+                <div id="modalMedidasContainer"></div>
+
+                <div class="producto-modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarModalProducto()">Cerrar</button>
+                    <button class="btn btn-success" id="modalBtnAgregar" onclick="agregarDesdeModal()">🛒 Agregar al pedido</button>
                 </div>
             </div>
         </div>
@@ -207,5 +841,11 @@
 
     <script src="config.js"></script>
     <script src="tienda.js"></script>
+    <script>
+        ThemeManager.init();
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+    </script>
 </body>
 </html>

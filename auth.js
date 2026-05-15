@@ -1,24 +1,20 @@
 // ============================================
-// MÓDULO DE AUTENTICACIÓN
+// AUTH.JS - AUTENTICACIÓN v2.0
 // ============================================
 
-function cerrarModalLogin() {
-    document.getElementById('loginModal').classList.remove('active');
-}
-
 async function login() {
-    const email = document.getElementById('loginEmail').value;
+    const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorDiv = document.getElementById('loginError');
-    
-    errorDiv.style.display = 'none';
-    
+
+    errorDiv.classList.add('hidden');
+
     if (!email || !password) {
         errorDiv.textContent = 'Ingresa email y contraseña';
-        errorDiv.style.display = 'block';
+        errorDiv.classList.remove('hidden');
         return;
     }
-    
+
     try {
         const { data, error } = await db
             .from('usuarios')
@@ -26,45 +22,40 @@ async function login() {
             .eq('email', email)
             .eq('activo', true)
             .maybeSingle();
-        
+
         if (error || !data) {
-            errorDiv.textContent = 'Usuario no encontrado';
-            errorDiv.style.display = 'block';
+            errorDiv.textContent = 'Usuario no encontrado o inactivo';
+            errorDiv.classList.remove('hidden');
             return;
         }
-        
+
         if (data.password_hash !== password) {
             errorDiv.textContent = 'Contraseña incorrecta';
-            errorDiv.style.display = 'block';
+            errorDiv.classList.remove('hidden');
             return;
         }
-        
+
+        // Guardar sesión
         AppState.currentUser = data;
         AppState.currentUserRole = data.rol;
         AppState.currentUserName = data.nombre;
         AppState.isLoggedIn = true;
-        
+
+        localStorage.setItem('ttm-user', JSON.stringify({
+            id: data.id,
+            email: data.email,
+            nombre: data.nombre,
+            rol: data.rol
+        }));
+
         cerrarModalLogin();
-        document.getElementById('userNameDisplay').textContent = `👋 ${AppState.currentUserName} (${AppState.currentUserRole === 'admin' ? 'Administrador' : 'Trabajador'})`;
-        document.getElementById('logoutBtn').style.display = 'block';
-        document.getElementById('clientePanel').style.display = 'none';
-        document.getElementById('tabsContent').style.display = 'block';
-        document.getElementById('loginDiscreto').style.display = 'none';
-        
-        // Redirigir según rol
-        if (AppState.currentUserRole === 'admin') {
-            // Admin: mostrar todas las pestañas
-            document.getElementById('tabsContainer').style.display = 'flex';
-            await cargarDashboard();
-        } else {
-            // Trabajador: ocultar pestañas de admin, mostrar panel de trabajador
-            document.getElementById('tabsContainer').style.display = 'none';
-            await cargarPanelTrabajador();
-        }
-        
+        actualizarUIAutenticado();
+        Toast.success(`Bienvenido, ${data.nombre}!`);
+
     } catch (err) {
         errorDiv.textContent = 'Error: ' + err.message;
-        errorDiv.style.display = 'block';
+        errorDiv.classList.remove('hidden');
+        console.error('Error login:', err);
     }
 }
 
@@ -73,20 +64,12 @@ function logout() {
     AppState.currentUserRole = null;
     AppState.currentUserName = null;
     AppState.isLoggedIn = false;
-    
-    document.getElementById('loginModal').classList.remove('active');
-    document.getElementById('userNameDisplay').textContent = '';
-    document.getElementById('logoutBtn').style.display = 'none';
-    document.getElementById('tabsContainer').style.display = 'none';
-    document.getElementById('clientePanel').style.display = 'block';
-    document.getElementById('tabsContent').style.display = 'none';
-    document.getElementById('loginDiscreto').style.display = 'block';
-    
-    document.getElementById('consultaCodigo').value = '';
-    document.getElementById('consultaTelefono').value = '';
-    document.getElementById('resultadoConsulta').innerHTML = '';
-    document.getElementById('loginEmail').value = '';
-    document.getElementById('loginPassword').value = '';
+
+    localStorage.removeItem('ttm-user');
+
+    cerrarModalLogin();
+    actualizarUIAnonimo();
+    Toast.info('Sesión cerrada correctamente');
 }
 
 async function verificarConexion() {
@@ -101,28 +84,14 @@ async function verificarConexion() {
     }
 }
 
-function mostrarLogin() {
-    document.getElementById('loginModal').classList.add('active');
-    document.getElementById('loginError').style.display = 'none';
-    document.getElementById('loginEmail').focus();
-}
-
-// ============================================
-// FUNCIÓN COMÚN PARA VERIFICAR SESIÓN
-// ============================================
-
 function verificarSesion() {
     if (!AppState.isLoggedIn) {
-        alert('⚠️ Debes iniciar sesión para acceder a esta sección.');
+        Toast.warning('Debes iniciar sesión para acceder a esta sección');
         mostrarLogin();
         return false;
     }
     return true;
 }
-
-// ============================================
-// VERIFICAR SI ES ADMIN
-// ============================================
 
 function esAdmin() {
     return AppState.isLoggedIn && AppState.currentUserRole === 'admin';
@@ -131,3 +100,21 @@ function esAdmin() {
 function esTrabajador() {
     return AppState.isLoggedIn && AppState.currentUserRole === 'trabajador';
 }
+
+// Login con Enter
+document.addEventListener('DOMContentLoaded', () => {
+    const passwordInput = document.getElementById('loginPassword');
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+    }
+});
+
+// Exponer funciones globales
+window.login = login;
+window.logout = logout;
+window.verificarConexion = verificarConexion;
+window.verificarSesion = verificarSesion;
+window.esAdmin = esAdmin;
+window.esTrabajador = esTrabajador;

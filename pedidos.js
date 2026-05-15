@@ -1,29 +1,30 @@
 // ============================================
-// MÓDULO DE PEDIDOS (ADMIN + CONSULTA CLIENTE)
+// PEDIDOS.JS - GESTIÓN DE PEDIDOS v2.0
 // ============================================
 
 let pedidosData = [];
 let filtroEstado = 'todos';
 
 // ============================================
-// CONSULTA DE PEDIDO (CLIENTE - desde index.html) - CORREGIDA
+// CONSULTA CLIENTE (desde landing)
 // ============================================
 
 async function consultarPedido() {
     const codigo = document.getElementById('consultaCodigo').value.trim();
     const telefono = document.getElementById('consultaTelefono').value.trim();
     const resultadoDiv = document.getElementById('resultadoConsulta');
-    
+
     if (!codigo || !telefono) {
-        resultadoDiv.innerHTML = '<div class="alert alert-danger">Ingresa código de pedido (PED-XXXX) o tu nombre, y tu teléfono</div>';
+        resultadoDiv.innerHTML = '<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Ingresa código de pedido y teléfono</div></div>';
         return;
     }
-    
+
+    resultadoDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Buscando pedido...</p></div>';
+
     try {
         let pedidos = [];
         let busquedaPorCodigo = false;
-        
-        // Si el código parece un código de pedido (empieza con PED-)
+
         if (codigo.toUpperCase().startsWith('PED-')) {
             busquedaPorCodigo = true;
             const { data, error } = await db
@@ -31,543 +32,487 @@ async function consultarPedido() {
                 .select('*, clientes(*)')
                 .eq('codigo', codigo)
                 .maybeSingle();
-            
+
             if (error) throw error;
             if (data) pedidos = [data];
-            
-        } 
-        // Si no es código, buscar por nombre del cliente (búsqueda directa sin maybeSingle)
-        else {
+        } else {
             const { data: pedidosData, error: pedidosError } = await db
                 .from('pedidos')
                 .select('*, clientes(*)')
                 .eq('clientes.telefono', telefono)
                 .ilike('clientes.nombre', `%${codigo}%`);
-            
+
             if (pedidosError) throw pedidosError;
             pedidos = pedidosData || [];
         }
-        
+
         if (pedidos.length === 0) {
-            resultadoDiv.innerHTML = '<div class="alert alert-danger">No se encontraron pedidos. Verifica tu nombre y teléfono.</div>';
+            resultadoDiv.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">No se encontraron pedidos</div>
+                    <div class="empty-state-desc">Verifica el código y teléfono, o realiza un nuevo pedido</div>
+                    <a href="tienda.html" class="btn btn-primary">🛒 Ir a la Tienda</a>
+                </div>
+            `;
             return;
         }
-        
-        // Verificar teléfono para el caso de código individual
+
         if (busquedaPorCodigo && pedidos[0]?.clientes?.telefono !== telefono) {
-            resultadoDiv.innerHTML = '<div class="alert alert-danger">Teléfono incorrecto para este pedido</div>';
+            resultadoDiv.innerHTML = '<div class="alert alert-danger"><span class="alert-icon">❌</span><div>Teléfono incorrecto para este pedido</div></div>';
             return;
         }
-        
-        // Mostrar todos los pedidos encontrados
-        let html = '';
-        
+
+        let html = '<div style="display:flex; flex-direction:column; gap:1rem;">';
+
         for (const pedido of pedidos) {
             const { data: detalles } = await db
                 .from('detalle_pedido')
                 .select('*')
                 .eq('pedido_id', pedido.id);
-            
-            let detallesHtml = '<h4>📋 Detalle del pedido:</h4><ul>';
-            if (detalles && detalles.length > 0) {
-                detalles.forEach(d => {
-                    detallesHtml += `<li>${d.cantidad} x ${d.descripcion} - Bs ${d.subtotal?.toFixed(2) || '0.00'}</li>`;
-                });
-            } else {
-                detallesHtml += '<li>Sin productos registrados</li>';
-            }
-            detallesHtml += '</ul>';
-            
-            const estadoText = {
-                'pendiente': '⏳ Pendiente',
-                'en_proceso': '⚙️ En proceso',
-                'terminado': '✅ Terminado - Listo para retirar',
-                'entregado': '📦 Entregado',
-                'rechazado': '❌ Rechazado',
-                'cotizado': '💰 Cotizado',
-                'rechazado_definitivo': '❌ Cancelado'
-            };
-            
-            const estadoColor = {
-                'pendiente': '#ffc107',
-                'en_proceso': '#17a2b8',
-                'terminado': '#28a745',
-                'entregado': '#6c757d',
-                'rechazado': '#dc3545',
-                'cotizado': '#ffc107',
-                'rechazado_definitivo': '#dc3545'
-            };
-            
-            // Si el pedido fue rechazado definitivamente, mostrar motivo
-            if (pedido.rechazo_definitivo === true || pedido.estado === 'rechazado_definitivo') {
-                html += `
-                    <div class="card" style="margin-top: 1rem; border-left: 4px solid #dc3545;">
-                        <h3>📄 Pedido ${pedido.codigo}</h3>
-                        <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                        <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                        <p><strong>📌 Estado:</strong> <span class="badge" style="background: #dc3545; color: white;">❌ Cancelado</span></p>
-                        <p><strong>⚠️ Motivo de la cancelación:</strong> ${pedido.motivo_rechazo_definitivo || 'No especificado'}</p>
-                        ${detallesHtml}
-                        <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total?.toFixed(2) || '0.00'}</strong></p>
-                        <button class="btn btn-primary" onclick="window.location.href='tienda.html'">🛒 Hacer nuevo pedido</button>
-                    </div>
-                `;
-                continue;
-            }
-            
-            // Mostrar pedido normal
-            html += `
-                <div class="card" style="margin-top: 1rem; border-left: 4px solid ${estadoColor[pedido.estado] || '#1a73e8'};">
-                    <h3>📄 Pedido ${pedido.codigo}</h3>
-                    <p><strong>👤 Cliente:</strong> ${pedido.clientes?.nombre || 'N/A'}</p>
-                    <p><strong>📅 Fecha:</strong> ${new Date(pedido.created_at).toLocaleString()}</p>
-                    <p><strong>📌 Estado:</strong> <span class="badge" style="background: ${estadoColor[pedido.estado] || '#1a73e8'}; color: white;">${estadoText[pedido.estado] || pedido.estado}</span></p>
-                    ${pedido.tipo_entrega ? `<p><strong>🚚 Entrega:</strong> ${pedido.tipo_entrega === 'retiro_taller' ? '📦 Retiro en taller' : pedido.tipo_entrega === 'envio_domicilio' ? '🚚 Envío a domicilio' : '🏪 Entrega en tienda'}</p>` : ''}
-                    ${detallesHtml}
-                    <p><strong>💰 Total:</strong> <strong style="color: #28a745;">Bs ${pedido.total?.toFixed(2) || '0.00'}</strong></p>
-                    ${pedido.estado === 'terminado' ? '<button class="btn btn-success" onclick="alert(\'📞 Contáctanos para coordinar la entrega o retiro\')">📞 Solicitar retiro/entrega</button>' : ''}
-                    ${pedido.estado === 'cotizado' && pedido.precio_asignado_manual ? `
-                        <div style="margin-top: 1rem;">
-                            <p><strong>💰 Precio cotizado:</strong> Bs ${pedido.precio_asignado_manual.toFixed(2)}</p>
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <button class="btn btn-success" onclick="aceptarCotizacion(${pedido.id}, '${pedido.codigo}')">✅ Aceptar pedido</button>
-                                <button class="btn btn-danger" onclick="cancelarCotizacion(${pedido.id}, '${pedido.codigo}')">❌ Cancelar pedido</button>
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
+
+            html += renderPedidoCliente(pedido, detalles || []);
         }
-        
+
+        html += '</div>';
         resultadoDiv.innerHTML = html;
-        
+
     } catch (err) {
-        console.error('Error en consulta:', err);
-        resultadoDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        console.error('Error consulta:', err);
+        resultadoDiv.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div>Error: ${err.message}</div></div>`;
     }
 }
 
-function mostrarNuevoPedidoForm() {
-    window.location.href = 'tienda.html';
+function renderPedidoCliente(pedido, detalles) {
+    const estadoColor = {
+        'pendiente': 'var(--warning)',
+        'en_proceso': 'var(--info)',
+        'terminado': 'var(--success)',
+        'entregado': 'var(--primary-500)',
+        'rechazado': 'var(--danger)',
+        'rechazado_definitivo': 'var(--danger)',
+        'cotizado': '#ec4899',
+        'cancelado_por_cliente': 'var(--danger)'
+    };
+
+    const estadoText = {
+        'pendiente': '⏳ Pendiente de asignación',
+        'en_proceso': '🔧 En proceso de fabricación',
+        'terminado': '✅ Terminado - Listo para retirar',
+        'entregado': '📦 Entregado',
+        'rechazado': '❌ Rechazado temporalmente',
+        'rechazado_definitivo': '🚫 Cancelado definitivamente',
+        'cotizado': '💰 Esperando tu aprobación',
+        'cancelado_por_cliente': '🚫 Cancelado por el cliente'
+    };
+
+    let detallesHtml = '';
+    if (detalles.length > 0) {
+        detallesHtml = `
+            <div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-light);">
+                <div style="font-weight:600; font-size:0.875rem; margin-bottom:0.5rem; color:var(--text-secondary);">📦 Productos:</div>
+                ${detalles.map(d => `
+                    <div style="display:flex; justify-content:space-between; padding:0.4rem 0; font-size:0.875rem; border-bottom:1px solid var(--border-light);">
+                        <span>${d.cantidad} x ${d.descripcion}</span>
+                        <span style="font-weight:600;">${formatMoney(d.subtotal)}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    let accionesHtml = '';
+    if (pedido.estado === 'cotizado' && pedido.precio_asignado_manual) {
+        accionesHtml = `
+            <div style="margin-top:1rem; padding:1rem; background:var(--info-light); border-radius:var(--radius-sm);">
+                <div style="font-weight:700; margin-bottom:0.5rem;">💰 Precio cotizado: ${formatMoney(pedido.precio_asignado_manual)}</div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-success btn-sm" onclick="aceptarCotizacion(${pedido.id}, '${pedido.codigo}')">✅ Aceptar</button>
+                    <button class="btn btn-danger btn-sm" onclick="cancelarCotizacion(${pedido.id}, '${pedido.codigo}')">❌ Cancelar</button>
+                </div>
+            </div>
+        `;
+    }
+
+    if (pedido.estado === 'rechazado_definitivo') {
+        return `
+            <div class="card" style="border-left:4px solid ${estadoColor[pedido.estado] || 'var(--danger)'};">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                    <div>
+                        <div style="font-size:1.25rem; font-weight:800; color:var(--text-primary);">📋 ${pedido.codigo}</div>
+                        <div class="text-muted text-sm">${formatDate(pedido.created_at)}</div>
+                    </div>
+                    <span class="badge badge-rechazado_definitivo">${estadoText[pedido.estado]}</span>
+                </div>
+                <div class="alert alert-danger" style="margin:0.75rem 0;">
+                    <strong>Motivo de cancelación:</strong> ${pedido.motivo_rechazo_definitivo || 'No especificado'}
+                </div>
+                ${detallesHtml}
+                <div style="margin-top:1rem;">
+                    <a href="tienda.html" class="btn btn-primary btn-sm">🛒 Hacer nuevo pedido</a>
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="card" style="border-left:4px solid ${estadoColor[pedido.estado] || 'var(--primary-500)'};">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                <div>
+                    <div style="font-size:1.25rem; font-weight:800; color:var(--text-primary);">📋 ${pedido.codigo}</div>
+                    <div class="text-muted text-sm">${formatDate(pedido.created_at)}</div>
+                </div>
+                <span class="badge badge-${pedido.estado}">${estadoText[pedido.estado] || pedido.estado}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.75rem; margin:0.75rem 0; font-size:0.875rem;">
+                <div><span class="text-muted">Cliente:</span> <strong>${pedido.clientes?.nombre || 'N/A'}</strong></div>
+                <div><span class="text-muted">Teléfono:</span> <strong>${pedido.clientes?.telefono || 'N/A'}</strong></div>
+                ${pedido.tipo_entrega ? `<div><span class="text-muted">Entrega:</span> <strong>${formatearEntrega(pedido.tipo_entrega)}</strong></div>` : ''}
+                ${pedido.fecha_estimada_entrega ? `<div><span class="text-muted">Entrega estimada:</span> <strong>${formatDateShort(pedido.fecha_estimada_entrega)}</strong></div>` : ''}
+            </div>
+            ${detallesHtml}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-light);">
+                <div style="font-size:1.25rem; font-weight:800; color:var(--success);">${formatMoney(pedido.total)}</div>
+                ${pedido.estado === 'terminado' ? '<button class="btn btn-success btn-sm" onclick="alert("📞 Contáctanos para coordinar la entrega")">📦 Solicitar retiro</button>' : ''}
+            </div>
+            ${accionesHtml}
+        </div>
+    `;
+}
+
+function formatearEntrega(tipo) {
+    const map = {
+        'retiro_taller': '🏭 Retiro en taller',
+        'envio_domicilio': '🚚 Envío a domicilio',
+        'entrega_tienda': '🏪 Entrega en tienda'
+    };
+    return map[tipo] || tipo;
 }
 
 // ============================================
-// GESTIÓN DE PEDIDOS (ADMIN)
+// GESTIÓN ADMIN
 // ============================================
 
 async function cargarPedidos() {
-    if (!verificarSesion()) return;
-    
-    const tabsContent = document.getElementById('tabsContent');
-    tabsContent.innerHTML = `
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">📦 Gestión de Pedidos</h2>
-                <button id="btnRefrescarPedidos" class="btn btn-primary">🔄 Refrescar</button>
+    if (!verificarSesion() || !esAdmin()) return;
+
+    const container = document.getElementById('vistaDinamica');
+    container.innerHTML = `
+        <div class="card animate-fade-in">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">📋 Gestión de Pedidos</div>
+                    <div class="card-subtitle">Administra todos los pedidos del sistema</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="refrescarListaPedidos()">🔄 Refrescar</button>
             </div>
-            
-            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                <strong>📌 Filtrar por estado:</strong>
-                <button id="filtroTodos" class="btn-filtro-pedido" data-estado="todos" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: none; cursor: pointer; background: #1a73e8; color: white;">Todos</button>
-                <button id="filtroPendiente" class="btn-filtro-pedido" data-estado="pendiente" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">⏳ Pendientes</button>
-                <button id="filtroProceso" class="btn-filtro-pedido" data-estado="en_proceso" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">⚙️ En proceso</button>
-                <button id="filtroTerminado" class="btn-filtro-pedido" data-estado="terminado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">✅ Terminados</button>
-                <button id="filtroEntregado" class="btn-filtro-pedido" data-estado="entregado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">📦 Entregados</button>
-                <button id="filtroRechazado" class="btn-filtro-pedido" data-estado="rechazado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">❌ Rechazados</button>
-                <button id="filtroCotizado" class="btn-filtro-pedido" data-estado="cotizado" style="padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #ddd; cursor: pointer;">💰 Cotizados</button>
+
+            <div class="filtros-bar">
+                <span class="text-muted text-sm" style="font-weight:600;">🔍 Filtrar:</span>
+                <button class="filtro-btn active" data-estado="todos" onclick="aplicarFiltro('todos')">Todos</button>
+                <button class="filtro-btn" data-estado="pendiente" onclick="aplicarFiltro('pendiente')">⏳ Pendientes</button>
+                <button class="filtro-btn" data-estado="en_proceso" onclick="aplicarFiltro('en_proceso')">🔧 En proceso</button>
+                <button class="filtro-btn" data-estado="terminado" onclick="aplicarFiltro('terminado')">✅ Terminados</button>
+                <button class="filtro-btn" data-estado="entregado" onclick="aplicarFiltro('entregado')">📦 Entregados</button>
+                <button class="filtro-btn" data-estado="rechazado" onclick="aplicarFiltro('rechazado')">❌ Rechazados</button>
+                <button class="filtro-btn" data-estado="cotizado" onclick="aplicarFiltro('cotizado')">💰 Cotizados</button>
             </div>
-            
+
             <div id="listaPedidos">
-                <div class="loading">Cargando pedidos...</div>
+                <div class="loading"><div class="spinner"></div><p>Cargando pedidos...</p></div>
             </div>
         </div>
     `;
-    
-    document.getElementById('filtroTodos').onclick = () => aplicarFiltro('todos');
-    document.getElementById('filtroPendiente').onclick = () => aplicarFiltro('pendiente');
-    document.getElementById('filtroProceso').onclick = () => aplicarFiltro('en_proceso');
-    document.getElementById('filtroTerminado').onclick = () => aplicarFiltro('terminado');
-    document.getElementById('filtroEntregado').onclick = () => aplicarFiltro('entregado');
-    document.getElementById('filtroRechazado').onclick = () => aplicarFiltro('rechazado');
-    document.getElementById('filtroCotizado').onclick = () => aplicarFiltro('cotizado');
-    document.getElementById('btnRefrescarPedidos').onclick = () => refrescarListaPedidos();
-    
+
     await refrescarListaPedidos();
 }
 
 function aplicarFiltro(estado) {
     filtroEstado = estado;
-    
-    document.querySelectorAll('.btn-filtro-pedido').forEach(btn => {
-        btn.style.background = '#f0f0f0';
-        btn.style.color = '#333';
-        btn.style.border = '1px solid #ddd';
+
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.estado === estado) btn.classList.add('active');
     });
-    
-    const btnMap = {
-        'todos': 'filtroTodos',
-        'pendiente': 'filtroPendiente',
-        'en_proceso': 'filtroProceso',
-        'terminado': 'filtroTerminado',
-        'entregado': 'filtroEntregado',
-        'rechazado': 'filtroRechazado',
-        'cotizado': 'filtroCotizado'
-    };
-    
-    const btnActivo = document.getElementById(btnMap[estado]);
-    if (btnActivo) {
-        btnActivo.style.background = '#1a73e8';
-        btnActivo.style.color = 'white';
-        btnActivo.style.border = 'none';
-    }
-    
+
     refrescarListaPedidos();
-}
-
-// ============================================
-// RECHAZO DEFINITIVO (ADMIN)
-// ============================================
-async function rechazarDefinitivo(id, codigo) {
-    const motivo = prompt(`❌ RECHAZO DEFINITIVO del pedido ${codigo}\n\nEste pedido será cancelado para siempre. El cliente verá este motivo.\n\nMotivo:`);
-    
-    if (!motivo || motivo.trim() === '') {
-        alert('Debes ingresar un motivo');
-        return;
-    }
-    
-    if (!confirm(`⚠️ ¿Cancelar DEFINITIVAMENTE el pedido ${codigo}?\nMotivo: ${motivo}\n\nEl cliente será notificado.`)) return;
-    
-    try {
-        await db.from('pedidos').update({ 
-            estado: 'rechazado_definitivo',
-            rechazo_definitivo: true,
-            motivo_rechazo_definitivo: motivo
-        }).eq('id', id);
-        
-        alert(`✅ Pedido ${codigo} cancelado definitivamente`);
-        await refrescarListaPedidos();
-        
-    } catch (err) {
-        alert('❌ Error: ' + err.message);
-    }
-}
-
-// ============================================
-// VER MOTIVOS DE RECHAZO DE TRABAJADORES
-// ============================================
-async function verMotivosRechazo(pedidoId, codigo) {
-    try {
-        const { data: rechazos } = await db
-            .from('rechazos_trabajadores')
-            .select('*, trabajador_id, usuarios(nombre)')
-            .eq('pedido_id', pedidoId);
-        
-        if (!rechazos || rechazos.length === 0) {
-            alert(`No hay rechazos registrados para el pedido ${codigo}`);
-            return;
-        }
-        
-        let mensaje = `📋 RECHAZOS del pedido ${codigo}:\n━━━━━━━━━━━━━━━━━━━━━━\n`;
-        rechazos.forEach((r, idx) => {
-            mensaje += `${idx + 1}. 👨‍🔧 ${r.usuarios?.nombre || 'Trabajador ID: ' + r.trabajador_id}\n`;
-            mensaje += `   📝 Motivo: ${r.motivo}\n`;
-            mensaje += `   📅 Fecha: ${new Date(r.fecha_rechazo).toLocaleString()}\n━━━━━━━━━━━━━━━━━━━━━━\n`;
-        });
-        
-        alert(mensaje);
-        
-    } catch (err) {
-        alert('Error al cargar motivos: ' + err.message);
-    }
 }
 
 async function refrescarListaPedidos() {
     const listaDiv = document.getElementById('listaPedidos');
     if (!listaDiv) return;
-    listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
-    
+    listaDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Cargando...</p></div>';
+
     try {
         let query = db
             .from('pedidos')
             .select('*, clientes(nombre, telefono, direccion)')
             .order('created_at', { ascending: false });
-        
+
         if (filtroEstado !== 'todos') {
             query = query.eq('estado', filtroEstado);
         }
-        
+
         const { data, error } = await query;
         if (error) throw error;
-        
+
         pedidosData = data || [];
-        
+
         if (pedidosData.length === 0) {
-            listaDiv.innerHTML = '<div class="alert alert-info" style="text-align: center;">No hay pedidos registrados</div>';
+            listaDiv.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-title">No hay pedidos</div>
+                    <div class="empty-state-desc">No se encontraron pedidos con el filtro seleccionado</div>
+                </div>
+            `;
             return;
         }
-        
-        const { data: rechazosList } = await db
-            .from('rechazos_trabajadores')
-            .select('pedido_id');
-        
+
+        const { data: rechazosList } = await db.from('rechazos_trabajadores').select('pedido_id');
         const rechazoCountMap = {};
-        if (rechazosList) {
-            rechazosList.forEach(r => {
-                rechazoCountMap[r.pedido_id] = (rechazoCountMap[r.pedido_id] || 0) + 1;
-            });
-        }
-        
+        (rechazosList || []).forEach(r => {
+            rechazoCountMap[r.pedido_id] = (rechazoCountMap[r.pedido_id] || 0) + 1;
+        });
+
         let html = `
             <div class="table-container">
-                <table style="width: 100%; border-collapse: collapse;">
+                <table>
                     <thead>
-                        <tr style="background: #1a73e8; color: white;">
-                            <th style="padding: 10px;">Código</th>
-                            <th style="padding: 10px;">Cliente</th>
-                            <th style="padding: 10px;">Teléfono</th>
-                            <th style="padding: 10px;">Total</th>
-                            <th style="padding: 10px;">Estado</th>
-                            <th style="padding: 10px;">Rechazos</th>
-                            <th style="padding: 10px;">Entrega</th>
-                            <th style="padding: 10px;">Adelanto</th>
-                            <th style="padding: 10px;">Fecha</th>
-                            <th style="padding: 10px;">Acciones</th>
+                        <tr>
+                            <th>Código</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Rechazos</th>
+                            <th>Entrega</th>
+                            <th>Fecha</th>
+                            <th style="width:120px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
-        
+
         for (const p of pedidosData) {
-            const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', p.id);
-            
-            const entregaText = {
-                'retiro_taller': '📦 Taller',
-                'envio_domicilio': '🚚 Domicilio',
-                'entrega_tienda': '🏪 Tienda'
-            };
-            const entregaShow = p.tipo_entrega ? entregaText[p.tipo_entrega] || p.tipo_entrega : 'N/A';
             const rechazoCount = rechazoCountMap[p.id] || 0;
-            
+            const entregaText = formatearEntrega(p.tipo_entrega) || 'N/A';
+
             html += `
-                        <tr style="border-bottom: 1px solid #ddd;">
-                            <td style="padding: 8px;"><strong>${p.codigo}</strong></td>
-                            <td style="padding: 8px;">${p.clientes?.nombre || 'N/A'}</td>
-                            <td style="padding: 8px;">${p.clientes?.telefono || 'N/A'}</td>
-                            <td style="padding: 8px;"><strong style="color: #28a745;">Bs ${p.total?.toFixed(2) || '0.00'}</strong>${p.precio_asignado_manual ? `<br><small>Cotizado: Bs ${p.precio_asignado_manual}</small>` : ''}</td>
-                            <td style="padding: 8px;">
-                                <select id="estado-${p.id}" class="form-control" style="width: 120px; padding: 4px;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
-                                    <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
-                                    <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>⚙️ En proceso</option>
-                                    <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
-                                    <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
-                                    <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
-                                    <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
-                                </select>
-                                ${p.rechazo_definitivo ? '<br><span style="color: red;">CANCELADO</span>' : ''}
-                            </td>
-                            <td style="padding: 8px; text-align: center;">
-                                ${rechazoCount > 0 ? `<span style="color: #dc3545; cursor: pointer; text-decoration: underline;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">⚠️ ${rechazoCount} rechazo(s)</span>` : '0'}
-                            </td>
-                            <td style="padding: 8px;">${entregaShow}</td>
-                            <td style="padding: 8px;">${p.adelanto_monto > 0 ? `Bs ${p.adelanto_monto}<br><small>${p.adelanto_confirmado ? '✅ Confirmado' : '⏳ Pendiente'}</small>` : 'Sin adelanto'}</td>
-                            <td style="padding: 8px;"><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
-                            <td style="padding: 8px;">
-                                <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
-                                ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
-                                ${p.estado === 'pendiente' && !p.requiere_cotizacion && !p.rechazo_definitivo ? `<button class="btn" style="background: #dc3545; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarPedido(${p.id}, '${p.codigo}')">❌ Rechazar</button>` : ''}
-                                ${p.estado === 'pendiente' && !p.rechazo_definitivo ? `<button class="btn" style="background: #6c757d; padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="rechazarDefinitivo(${p.id}, '${p.codigo}')">❌ Rechazar Definitivo</button>` : ''}
-                                ${p.estado === 'terminado' ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-top: 4px;" onclick="generarPDFPedido(${p.id})">📄 Recibo</button>` : ''}
-                            </td>
-                        </tr>
-                        <tr style="background: #f9f9f9;">
-                            <td colspan="10" style="padding: 8px;">
-                                <details>
-                                    <summary style="cursor: pointer; color: #1a73e8;">📋 Ver productos (${detalles?.length || 0})</summary>
-                                    <div style="margin-top: 8px; padding-left: 16px;">
-                                        ${detalles?.map(d => `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #eee;"><span>${d.cantidad} x ${d.descripcion}</span><span style="color: #28a745;">Bs ${d.subtotal?.toFixed(2) || '0.00'}</span></div>`).join('') || '<span>Sin productos</span>'}
-                                    </div>
-                                </details>
-                            </td>
-                        </tr>
+                <tr>
+                    <td><strong>${p.codigo}</strong></td>
+                    <td>
+                        <div style="font-weight:600;">${p.clientes?.nombre || 'N/A'}</div>
+                        <div class="text-muted text-xs">${p.clientes?.telefono || ''}</div>
+                    </td>
+                    <td><strong class="text-success">${formatMoney(p.total)}</strong>
+                        ${p.precio_asignado_manual ? `<br><span class="text-muted text-xs">Cotizado: ${formatMoney(p.precio_asignado_manual)}</span>` : ''}
+                    </td>
+                    <td>
+                        <select class="form-control" style="width:130px; font-size:0.75rem; padding:0.35rem;" onchange="cambiarEstadoPedido(${p.id}, this.value)">
+                            <option value="pendiente" ${p.estado === 'pendiente' ? 'selected' : ''}>⏳ Pendiente</option>
+                            <option value="en_proceso" ${p.estado === 'en_proceso' ? 'selected' : ''}>🔧 En proceso</option>
+                            <option value="terminado" ${p.estado === 'terminado' ? 'selected' : ''}>✅ Terminado</option>
+                            <option value="entregado" ${p.estado === 'entregado' ? 'selected' : ''}>📦 Entregado</option>
+                            <option value="rechazado" ${p.estado === 'rechazado' ? 'selected' : ''}>❌ Rechazado</option>
+                            <option value="cotizado" ${p.estado === 'cotizado' ? 'selected' : ''}>💰 Cotizado</option>
+                        </select>
+                        ${p.rechazo_definitivo ? '<br><span class="text-danger text-xs">CANCELADO</span>' : ''}
+                    </td>
+                    <td style="text-align:center;">
+                        ${rechazoCount > 0 ? `<span class="text-danger" style="cursor:pointer; text-decoration:underline; font-size:0.8rem;" onclick="verMotivosRechazo(${p.id}, '${p.codigo}')">👀 ${rechazoCount}</span>` : '<span class="text-muted">0</span>'}
+                    </td>
+                    <td class="text-xs">${entregaText}</td>
+                    <td class="text-muted text-xs">${formatDateShort(p.created_at)}</td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                            <button class="btn btn-info btn-sm" style="padding:0.3rem 0.5rem; font-size:0.7rem;" onclick="verDetallePedido(${p.id})">👁️ Ver</button>
+                            ${p.estado === 'pendiente' && p.requiere_cotizacion ? `<button class="btn btn-warning btn-sm" style="padding:0.3rem 0.5rem; font-size:0.7rem;" onclick="asignarPrecioEspecial(${p.id}, '${p.codigo}')">💰 Asignar</button>` : ''}
+                            ${p.estado === 'pendiente' && !p.rechazo_definitivo ? `<button class="btn btn-danger btn-sm" style="padding:0.3rem 0.5rem; font-size:0.7rem;" onclick="rechazarDefinitivo(${p.id}, '${p.codigo}')">🚫 Cancelar</button>` : ''}
+                            ${p.estado === 'terminado' ? `<button class="btn btn-success btn-sm" style="padding:0.3rem 0.5rem; font-size:0.7rem;" onclick="generarPDFPedido(${p.id})">📄 PDF</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
             `;
         }
-        
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
+
+        html += `</tbody></table></div>`;
         listaDiv.innerHTML = html;
-        
+
     } catch (err) {
         console.error('Error cargando pedidos:', err);
-        listaDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        listaDiv.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div>Error: ${err.message}</div></div>`;
     }
 }
 
 async function cambiarEstadoPedido(id, nuevoEstado) {
     try {
-        const { error } = await db.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
-        if (error) throw error;
+        const updates = { estado: nuevoEstado };
         if (nuevoEstado === 'terminado') {
-            await db.from('pedidos').update({ fecha_terminado: new Date() }).eq('id', id);
+            updates.fecha_terminado = new Date().toISOString();
         }
-        alert('✅ Estado actualizado');
+
+        const { error } = await db.from('pedidos').update(updates).eq('id', id);
+        if (error) throw error;
+
+        Toast.success('Estado actualizado correctamente');
         await refrescarListaPedidos();
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
-// ============================================
-// FUNCIONES PARA PEDIDOS ESPECIALES
-// ============================================
-
 async function asignarPrecioEspecial(id, codigo) {
-    const precioActual = prompt(`✏️ Asignar precio al pedido especial ${codigo}\n\nIngresa el precio final en Bolivianos (Bs):`);
-    
-    if (!precioActual || parseFloat(precioActual) <= 0) {
-        alert('⚠️ Ingresa un precio válido mayor a 0');
+    const precio = prompt(`💰 Asignar precio al pedido ${codigo}
+
+Ingresa el precio final en Bolivianos:`);
+    if (!precio || parseFloat(precio) <= 0) {
+        Toast.warning('Ingresa un precio válido');
         return;
     }
-    
-    const precioNum = parseFloat(precioActual);
-    
-    if (!confirm(`¿Asignar precio de Bs ${precioNum.toFixed(2)} al pedido ${codigo}?\n\nEl cliente podrá aceptar o cancelar.`)) {
-        return;
-    }
-    
+
+    const precioNum = parseFloat(precio);
+    if (!confirm(`¿Asignar Bs ${precioNum.toFixed(2)} al pedido ${codigo}?`)) return;
+
     try {
-        const { error } = await db
-            .from('pedidos')
-            .update({ 
-                precio_asignado_manual: precioNum,
-                estado: 'cotizado',
-                total: precioNum
-            })
-            .eq('id', id);
-        
+        const { error } = await db.from('pedidos').update({ 
+            precio_asignado_manual: precioNum,
+            estado: 'cotizado',
+            total: precioNum
+        }).eq('id', id);
+
         if (error) throw error;
-        
-        alert(`✅ Precio asignado: Bs ${precioNum.toFixed(2)}\nEl cliente verá el precio y podrá aceptar o cancelar.`);
+        Toast.success(`Precio asignado: ${formatMoney(precioNum)}`);
         await refrescarListaPedidos();
-        
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
 async function aceptarCotizacion(id, codigo) {
-    if (!confirm(`¿Aceptas el precio para el pedido ${codigo}?\n\nEl pedido entrará en proceso de fabricación.`)) return;
-    
+    if (!confirm(`¿Aceptar el precio para ${codigo}?`)) return;
     try {
-        const { error } = await db
-            .from('pedidos')
-            .update({ estado: 'en_proceso' })
-            .eq('id', id);
-        
+        const { error } = await db.from('pedidos').update({ estado: 'en_proceso' }).eq('id', id);
         if (error) throw error;
-        
-        alert('✅ Pedido aceptado. Procederemos con la fabricación.');
-        location.reload();
-        
+        Toast.success('Pedido aceptado. Iniciando fabricación.');
+        mostrarVista('pedidos');
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
 async function cancelarCotizacion(id, codigo) {
-    if (!confirm(`¿Cancelar el pedido ${codigo}?\n\nEl producto no se fabricará.`)) return;
-    
+    if (!confirm(`¿Cancelar el pedido ${codigo}?`)) return;
     try {
-        const { error } = await db
-            .from('pedidos')
-            .update({ estado: 'cancelado_por_cliente' })
-            .eq('id', id);
-        
+        const { error } = await db.from('pedidos').update({ estado: 'cancelado_por_cliente' }).eq('id', id);
         if (error) throw error;
-        
-        alert('❌ Pedido cancelado');
-        location.reload();
-        
+        Toast.info('Pedido cancelado');
+        mostrarVista('pedidos');
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
-async function rechazarPedido(id, codigo) {
-    const motivo = prompt(`❌ ¿Por qué rechazas el pedido ${codigo}?\n\nEscribe el motivo para que el cliente lo vea:`);
-    
-    if (!motivo || motivo.trim() === '') {
-        alert('⚠️ Debes ingresar un motivo para rechazar el pedido');
+async function rechazarDefinitivo(id, codigo) {
+    const motivo = prompt(`🚫 Cancelar pedido ${codigo}
+
+Motivo de la cancelación (visible para el cliente):`);
+    if (!motivo || !motivo.trim()) {
+        Toast.warning('Debes ingresar un motivo');
         return;
     }
-    
-    if (!confirm(`⚠️ ¿Rechazar el pedido ${codigo}?\n\nMotivo: ${motivo}\n\nEsta acción no se puede deshacer.`)) {
-        return;
-    }
-    
+
+    if (!confirm(`¿Cancelar DEFINITIVAMENTE ${codigo}?
+Motivo: ${motivo}`)) return;
+
     try {
-        const { error } = await db
-            .from('pedidos')
-            .update({ 
-                estado: 'rechazado', 
-                motivo_rechazo: motivo.trim(),
-                fecha_rechazo: new Date(),
-                rechazado_por: AppState?.currentUser?.id || null
-            })
-            .eq('id', id);
-        
-        if (error) throw error;
-        
-        alert(`✅ Pedido ${codigo} rechazado\nMotivo: ${motivo}`);
+        await db.from('pedidos').update({ 
+            estado: 'rechazado_definitivo',
+            rechazo_definitivo: true,
+            motivo_rechazo_definitivo: motivo.trim()
+        }).eq('id', id);
+
+        Toast.success(`Pedido ${codigo} cancelado`);
         await refrescarListaPedidos();
-        
     } catch (err) {
-        alert('❌ Error al rechazar: ' + err.message);
+        Toast.error('Error: ' + err.message);
+    }
+}
+
+async function verMotivosRechazo(pedidoId, codigo) {
+    try {
+        const { data: rechazos } = await db
+            .from('rechazos_trabajadores')
+            .select('*, usuarios(nombre)')
+            .eq('pedido_id', pedidoId);
+
+        if (!rechazos || rechazos.length === 0) {
+            Toast.info('No hay rechazos registrados');
+            return;
+        }
+
+        let mensaje = `👀 RECHAZOS - ${codigo}
+${'='.repeat(40)}
+`;
+        rechazos.forEach((r, i) => {
+            mensaje += `${i+1}. 👷 ${r.usuarios?.nombre || 'Trabajador'}
+   💬 ${r.motivo}
+   📅 ${formatDate(r.fecha_rechazo)}
+${'-'.repeat(40)}
+`;
+        });
+        alert(mensaje);
+    } catch (err) {
+        Toast.error('Error: ' + err.message);
     }
 }
 
 async function verDetallePedido(id) {
-    const { data: pedido } = await db.from('pedidos').select('*, clientes(*)').eq('id', id).single();
-    const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', id);
-    let detallesLista = detalles?.map(d => `- ${d.cantidad} x ${d.descripcion} = Bs ${d.subtotal?.toFixed(2) || '0.00'}`).join('\n') || 'Sin productos';
-    
-    let entregaInfo = '';
-    if (pedido.tipo_entrega) {
-        const entregaText = {
-            'retiro_taller': 'Retiro en taller',
-            'envio_domicilio': 'Envío a domicilio',
-            'entrega_tienda': 'Entrega en tienda'
-        };
-        entregaInfo = `\nEntrega: ${entregaText[pedido.tipo_entrega] || pedido.tipo_entrega}`;
-        if (pedido.direccion_envio) entregaInfo += `\nDirección: ${pedido.direccion_envio}`;
+    try {
+        const { data: pedido } = await db.from('pedidos').select('*, clientes(*)').eq('id', id).single();
+        const { data: detalles } = await db.from('detalle_pedido').select('*').eq('pedido_id', id);
+
+        let detallesLista = (detalles || []).map(d => 
+            `- ${d.cantidad} x ${d.descripcion} = ${formatMoney(d.subtotal)}`
+        ).join('\n') || 'Sin productos';
+
+        let infoExtra = '';
+        if (pedido.tipo_entrega) infoExtra += `\n🚚 Entrega: ${formatearEntrega(pedido.tipo_entrega)}`;
+        if (pedido.direccion_envio) infoExtra += `\n📍 Dirección: ${pedido.direccion_envio}`;
+        if (pedido.estado === 'rechazado' && pedido.motivo_rechazo) {
+            infoExtra += `\n\n❌ MOTIVO RECHAZO:\n${pedido.motivo_rechazo}`;
+        }
+        if (pedido.estado === 'cotizado' && pedido.precio_asignado_manual) {
+            infoExtra += `\n\n💰 PRECIO COTIZADO: ${formatMoney(pedido.precio_asignado_manual)}`;
+        }
+
+        alert(`📋 PEDIDO ${pedido.codigo}
+${'='.repeat(40)}
+👤 ${pedido.clientes?.nombre}
+📞 ${pedido.clientes?.telefono}
+📊 ${formatearEstado(pedido.estado)}
+💵 ${formatMoney(pedido.total)}${infoExtra}
+${'='.repeat(40)}
+📦 PRODUCTOS:
+${detallesLista}`);
+    } catch (err) {
+        Toast.error('Error: ' + err.message);
     }
-    
-    let rechazoInfo = '';
-    if (pedido.estado === 'rechazado' && pedido.motivo_rechazo) {
-        rechazoInfo = `\n━━━━━━━━━━━━━━━━━━━━━━\n❌ MOTIVO DEL RECHAZO:\n${pedido.motivo_rechazo}\nFecha: ${new Date(pedido.fecha_rechazo).toLocaleString()}`;
-    }
-    
-    let cotizacionInfo = '';
-    if (pedido.estado === 'cotizado' && pedido.precio_asignado_manual) {
-        cotizacionInfo = `\n━━━━━━━━━━━━━━━━━━━━━━\n💰 PRECIO COTIZADO: Bs ${pedido.precio_asignado_manual.toFixed(2)}`;
-    }
-    
-    alert(`📄 PEDIDO ${pedido.codigo}\n━━━━━━━━━━━━━━━━━━━━━━\nCliente: ${pedido.clientes?.nombre}\nTeléfono: ${pedido.clientes?.telefono}\nEstado: ${pedido.estado}${entregaInfo}\nTotal: Bs ${pedido.total}${cotizacionInfo}\n━━━━━━━━━━━━━━━━━━━━━━\nProductos:\n${detallesLista}${rechazoInfo}`);
 }
 
 function generarPDFPedido(id) {
-    alert(`📄 Generando PDF del pedido #${id}...\n(Funcionalidad en desarrollo)`);
+    Toast.info('Generando PDF... (funcionalidad en desarrollo)');
 }
 
-// Exponer funciones globalmente
+// Exponer funciones globales
 window.consultarPedido = consultarPedido;
-window.mostrarNuevoPedidoForm = mostrarNuevoPedidoForm;
-window.rechazarPedido = rechazarPedido;
+window.cargarPedidos = cargarPedidos;
+window.aplicarFiltro = aplicarFiltro;
+window.refrescarListaPedidos = refrescarListaPedidos;
+window.cambiarEstadoPedido = cambiarEstadoPedido;
 window.asignarPrecioEspecial = asignarPrecioEspecial;
 window.aceptarCotizacion = aceptarCotizacion;
 window.cancelarCotizacion = cancelarCotizacion;
 window.rechazarDefinitivo = rechazarDefinitivo;
 window.verMotivosRechazo = verMotivosRechazo;
+window.verDetallePedido = verDetallePedido;
+window.generarPDFPedido = generarPDFPedido;

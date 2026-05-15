@@ -1,80 +1,66 @@
 // ============================================
-// MÓDULO DE TRABAJADORES (ADMIN)
+// TRABAJADORES.JS - GESTIÓN DE TRABAJADORES v2.0
 // ============================================
 
 let trabajadoresData = [];
 let areasData = [];
 
 async function cargarTrabajadores() {
-    if (!verificarSesion()) return;
-    
-    const tabsContent = document.getElementById('tabsContent');
-    tabsContent.innerHTML = `
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">👨‍🔧 Gestión de Trabajadores</h2>
-                <button id="btnAgregarTrabajador" class="btn btn-success">➕ Nuevo Trabajador</button>
-            </div>
-            
-            <div id="formTrabajador" style="display: none; background: #f8f9fa; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
-                <h3 id="formTitulo">📝 Nuevo Trabajador</h3>
-                <div class="form-group">
-                    <label>Nombre completo *</label>
-                    <input type="text" id="trabajadorNombre" class="form-control" placeholder="Ej: Juan Pérez">
+    if (!verificarSesion() || !esAdmin()) return;
+
+    const container = document.getElementById('vistaDinamica');
+    container.innerHTML = `
+        <div class="card animate-fade-in">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">👷 Gestión de Trabajadores</div>
+                    <div class="card-subtitle">Administra tu equipo y sus áreas de trabajo</div>
                 </div>
-                <div class="form-group">
-                    <label>Email *</label>
-                    <input type="email" id="trabajadorEmail" class="form-control" placeholder="juan@taller.com">
+                <button class="btn btn-success btn-sm" onclick="mostrarFormularioTrabajador()">➕ Nuevo Trabajador</button>
+            </div>
+
+            <!-- Formulario -->
+            <div id="formTrabajador" class="hidden" style="background:var(--bg-body); padding:1.5rem; border-radius:var(--radius-md); margin-bottom:1.5rem; border:1px solid var(--border-color);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h3 id="formTituloTrab" style="font-size:1.1rem; font-weight:700;">➕ Nuevo Trabajador</h3>
+                    <button class="modal-close" onclick="ocultarFormularioTrabajador()">&times;</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nombre completo *</label>
+                        <input type="text" id="trabajadorNombre" class="form-control" placeholder="Ej: Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="trabajadorEmail" class="form-control" placeholder="juan@tallertotal.com">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Contraseña *</label>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña" style="flex: 1; filter: blur(4px); transition: filter 0.2s;">
-                        <button type="button" id="togglePasswordBtn" class="btn" style="background: #6c757d; padding: 0 1rem;">👁️</button>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="password" id="trabajadorPassword" class="form-control" placeholder="Contraseña segura" style="flex:1;">
+                        <button type="button" class="btn btn-secondary" style="padding:0.5rem 0.75rem;" onclick="togglePasswordVisibility()" id="togglePassBtn">👁️</button>
                     </div>
-                    <small class="text-muted">Haz clic en el ojo para mostrar/ocultar la contraseña.</small>
+                    <div class="form-hint">Haz clic en el ojo para mostrar/ocultar</div>
                 </div>
                 <div class="form-group">
                     <label>Áreas de trabajo</label>
-                    <div id="areasCheckbox" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
-                        <div class="loading">Cargando áreas...</div>
+                    <div id="areasCheckbox" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">
+                        <div class="loading"><div class="spinner" style="width:20px; height:20px;"></div></div>
                     </div>
                 </div>
-                <div class="button-group">
-                    <button id="btnGuardarTrabajador" class="btn btn-primary">💾 Guardar</button>
-                    <button id="btnCancelarTrabajador" class="btn btn-danger">❌ Cancelar</button>
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                    <button class="btn btn-secondary" onclick="ocultarFormularioTrabajador()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="guardarTrabajador()">💾 Guardar</button>
                 </div>
             </div>
-            
+
             <div id="listaTrabajadores">
-                <div class="loading">Cargando trabajadores...</div>
+                <div class="loading"><div class="spinner"></div><p>Cargando trabajadores...</p></div>
             </div>
         </div>
     `;
-    
-    document.getElementById('btnAgregarTrabajador').onclick = () => mostrarFormularioNuevo();
-    document.getElementById('btnGuardarTrabajador').onclick = guardarTrabajador;
-    document.getElementById('btnCancelarTrabajador').onclick = ocultarFormulario;
-    
-    const toggleBtn = document.getElementById('togglePasswordBtn');
-    const passwordInput = document.getElementById('trabajadorPassword');
-    if (toggleBtn && passwordInput) {
-        let passwordVisible = false;
-        toggleBtn.onclick = () => {
-            passwordVisible = !passwordVisible;
-            if (passwordVisible) {
-                passwordInput.type = 'text';
-                passwordInput.style.filter = 'blur(0px)';
-                toggleBtn.textContent = '🙈';
-            } else {
-                passwordInput.type = 'password';
-                passwordInput.style.filter = 'blur(4px)';
-                toggleBtn.textContent = '👁️';
-            }
-        };
-        passwordInput.style.filter = 'blur(4px)';
-    }
-    
+
     await cargarAreas();
     await refrescarListaTrabajadores();
 }
@@ -82,100 +68,69 @@ async function cargarTrabajadores() {
 let trabajadorEditando = null;
 
 async function cargarAreas() {
-    console.log('🔍 Cargando áreas...');
-    
-    // Verificar que db existe
-    if (typeof db === 'undefined') {
-        console.error('❌ db no está definido');
-        const container = document.getElementById('areasCheckbox');
-        if (container) container.innerHTML = '<div class="alert alert-danger">Error de conexión</div>';
-        return;
-    }
-    
     try {
-        const { data, error } = await db
-            .from('areas')
-            .select('*')
-            .order('nombre');
-        
-        if (error) {
-            console.error('Error en consulta:', error);
-            throw error;
-        }
-        
+        const { data, error } = await db.from('areas').select('*').order('nombre');
+        if (error) throw error;
         areasData = data || [];
-        console.log('✅ Áreas obtenidas:', areasData.length);
-        
+
         const container = document.getElementById('areasCheckbox');
         if (container) {
-            if (areasData.length === 0) {
-                container.innerHTML = '<div class="alert alert-warning">No hay áreas registradas.</div>';
-            } else {
-                container.innerHTML = areasData.map(area => `
-                    <label style="display: flex; align-items: center; gap: 0.3rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer;">
-                        <input type="checkbox" value="${area.id}" class="area-checkbox"> ${area.icono || '📁'} ${area.nombre}
-                    </label>
-                `).join('');
-                console.log('✅ Checkboxes generados');
-            }
-        } else {
-            console.error('❌ Contenedor #areasCheckbox no encontrado');
+            container.innerHTML = areasData.map(area => `
+                <label class="form-check" style="background:var(--bg-body); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                    <input type="checkbox" value="${area.id}" class="area-checkbox">
+                    <span>${area.icono || '🔧'} ${area.nombre}</span>
+                </label>
+            `).join('');
         }
-        
     } catch (err) {
-        console.error('❌ Error cargando áreas:', err);
-        const container = document.getElementById('areasCheckbox');
-        if (container) {
-            container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
-        }
+        console.error('Error cargando áreas:', err);
+        Toast.error('Error cargando áreas');
     }
 }
 
-function mostrarFormularioNuevo() {
+function togglePasswordVisibility() {
+    const input = document.getElementById('trabajadorPassword');
+    const btn = document.getElementById('togglePassBtn');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+
+function mostrarFormularioTrabajador() {
     trabajadorEditando = null;
-    document.getElementById('formTitulo').textContent = '📝 Nuevo Trabajador';
+    document.getElementById('formTituloTrab').textContent = '➕ Nuevo Trabajador';
     document.getElementById('trabajadorNombre').value = '';
     document.getElementById('trabajadorEmail').value = '';
-    
-    const passwordInput = document.getElementById('trabajadorPassword');
-    const toggleBtn = document.getElementById('togglePasswordBtn');
-    if (passwordInput) {
-        passwordInput.value = '';
-        passwordInput.type = 'password';
-        passwordInput.style.filter = 'blur(4px)';
-        if (toggleBtn) toggleBtn.textContent = '👁️';
-    }
-    
+    document.getElementById('trabajadorPassword').value = '';
+    document.getElementById('trabajadorPassword').type = 'password';
+    document.getElementById('togglePassBtn').textContent = '👁️';
     document.querySelectorAll('.area-checkbox').forEach(cb => cb.checked = false);
-    document.getElementById('formTrabajador').style.display = 'block';
+    document.getElementById('formTrabajador').classList.remove('hidden');
     document.getElementById('trabajadorNombre').focus();
 }
 
 function editarTrabajador(trabajador, areasAsignadas) {
     trabajadorEditando = trabajador;
-    document.getElementById('formTitulo').textContent = `✏️ Editando: ${trabajador.nombre}`;
+    document.getElementById('formTituloTrab').textContent = `✏️ Editando: ${trabajador.nombre}`;
     document.getElementById('trabajadorNombre').value = trabajador.nombre;
     document.getElementById('trabajadorEmail').value = trabajador.email;
-    
-    const passwordInput = document.getElementById('trabajadorPassword');
-    const toggleBtn = document.getElementById('togglePasswordBtn');
-    if (passwordInput) {
-        passwordInput.value = trabajador.password_visible || '';
-        passwordInput.type = 'password';
-        passwordInput.style.filter = 'blur(4px)';
-        if (toggleBtn) toggleBtn.textContent = '👁️';
-    }
-    
+    document.getElementById('trabajadorPassword').value = trabajador.password_visible || '';
+    document.getElementById('trabajadorPassword').type = 'password';
+    document.getElementById('togglePassBtn').textContent = '👁️';
+
     document.querySelectorAll('.area-checkbox').forEach(cb => {
         cb.checked = areasAsignadas.includes(parseInt(cb.value));
     });
-    
-    document.getElementById('formTrabajador').style.display = 'block';
-    document.getElementById('trabajadorNombre').focus();
+
+    document.getElementById('formTrabajador').classList.remove('hidden');
 }
 
-function ocultarFormulario() {
-    document.getElementById('formTrabajador').style.display = 'none';
+function ocultarFormularioTrabajador() {
+    document.getElementById('formTrabajador').classList.add('hidden');
     trabajadorEditando = null;
 }
 
@@ -183,223 +138,222 @@ async function guardarTrabajador() {
     const nombre = document.getElementById('trabajadorNombre').value.trim();
     const email = document.getElementById('trabajadorEmail').value.trim();
     const password = document.getElementById('trabajadorPassword').value.trim();
-    
     const areasSeleccionadas = [];
-    document.querySelectorAll('.area-checkbox:checked').forEach(cb => {
-        areasSeleccionadas.push(parseInt(cb.value));
-    });
-    
-    if (!nombre) {
-        alert('⚠️ El nombre es obligatorio');
-        return;
-    }
-    if (!email) {
-        alert('⚠️ El email es obligatorio');
-        return;
-    }
-    if (!trabajadorEditando && !password) {
-        alert('⚠️ La contraseña es obligatoria para nuevos trabajadores');
-        return;
-    }
-    
+    document.querySelectorAll('.area-checkbox:checked').forEach(cb => areasSeleccionadas.push(parseInt(cb.value)));
+
+    if (!nombre) { Toast.warning('El nombre es obligatorio'); return; }
+    if (!email) { Toast.warning('El email es obligatorio'); return; }
+    if (!trabajadorEditando && !password) { Toast.warning('La contraseña es obligatoria'); return; }
+
     try {
         if (trabajadorEditando) {
-            const updateData = { nombre: nombre, email: email };
+            const updateData = { nombre, email };
             if (password) {
                 updateData.password_hash = password;
                 updateData.password_visible = password;
             }
-            
-            const { error } = await db
-                .from('usuarios')
-                .update(updateData)
-                .eq('id', trabajadorEditando.id);
-            
+            const { error } = await db.from('usuarios').update(updateData).eq('id', trabajadorEditando.id);
             if (error) throw error;
-            
+
+            // Eliminar áreas existentes e insertar nuevas
             await db.from('usuario_areas').delete().eq('usuario_id', trabajadorEditando.id);
-            for (const areaId of areasSeleccionadas) {
-                await db.from('usuario_areas').insert([{ usuario_id: trabajadorEditando.id, area_id: areaId }]);
+
+            if (areasSeleccionadas.length > 0) {
+                const inserts = areasSeleccionadas.map(areaId => ({
+                    usuario_id: trabajadorEditando.id,
+                    area_id: areaId
+                }));
+                const { error: insertError } = await db.from('usuario_areas').insert(inserts);
+                if (insertError) {
+                    console.warn('Error insertando áreas (puede ser RLS):', insertError);
+                    Toast.warning('Trabajador guardado pero áreas no actualizadas. Verifica permisos RLS.');
+                }
             }
-            
-            alert('✅ Trabajador actualizado');
+            Toast.success('Trabajador actualizado');
         } else {
-            const { data, error } = await db
-                .from('usuarios')
-                .insert([{
-                    nombre: nombre,
-                    email: email,
-                    password_hash: password,
-                    password_visible: password,
-                    rol: 'trabajador',
-                    activo: true
-                }])
-                .select();
-            
+            const { data, error } = await db.from('usuarios').insert([{
+                nombre, email, password_hash: password, password_visible: password,
+                rol: 'trabajador', activo: true
+            }]).select();
             if (error) throw error;
-            
+
             const nuevoId = data[0].id;
-            for (const areaId of areasSeleccionadas) {
-                await db.from('usuario_areas').insert([{ usuario_id: nuevoId, area_id: areaId }]);
+
+            if (areasSeleccionadas.length > 0) {
+                const inserts = areasSeleccionadas.map(areaId => ({
+                    usuario_id: nuevoId,
+                    area_id: areaId
+                }));
+                const { error: insertError } = await db.from('usuario_areas').insert(inserts);
+                if (insertError) {
+                    console.warn('Error insertando áreas (puede ser RLS):', insertError);
+                    Toast.warning('Trabajador creado pero áreas no asignadas. Verifica permisos RLS.');
+                }
             }
-            
-            alert('✅ Trabajador creado');
+            Toast.success('Trabajador creado');
         }
-        
-        ocultarFormulario();
+
+        ocultarFormularioTrabajador();
         await refrescarListaTrabajadores();
-        
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
 async function toggleActivoTrabajador(id, activo, nombre) {
     const accion = activo ? 'activar' : 'desactivar';
-    if (!confirm(`¿${accion === 'activar' ? 'Activar' : 'Desactivar'} al trabajador "${nombre}"?`)) return;
-    
+    if (!confirm(`¿${accion === 'activar' ? 'Activar' : 'Desactivar'} a "${nombre}"?`)) return;
+
     try {
-        const { error } = await db
-            .from('usuarios')
-            .update({ activo: activo })
-            .eq('id', id);
-        
+        const { error } = await db.from('usuarios').update({ activo }).eq('id', id);
         if (error) throw error;
-        alert(`✅ Trabajador ${accion === 'activar' ? 'activado' : 'desactivado'}`);
+        Toast.success(`Trabajador ${accion === 'activar' ? 'activado' : 'desactivado'}`);
         await refrescarListaTrabajadores();
-        
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
 async function resetearPassword(id, nombre) {
-    const nuevaPassword = prompt(`🔑 Nueva contraseña para "${nombre}"\n\nIngresa la nueva contraseña:`);
-    
-    if (!nuevaPassword || nuevaPassword.trim() === '') {
-        alert('⚠️ Contraseña no válida');
-        return;
-    }
-    
-    if (!confirm(`¿Establecer nueva contraseña para "${nombre}"?`)) return;
-    
+    const nueva = prompt(`🔑 Nueva contraseña para "${nombre}":`);
+    if (!nueva || !nueva.trim()) { Toast.warning('Contraseña no válida'); return; }
+
     try {
-        const { error } = await db
-            .from('usuarios')
-            .update({ 
-                password_hash: nuevaPassword,
-                password_visible: nuevaPassword
-            })
-            .eq('id', id);
-        
+        const { error } = await db.from('usuarios').update({ 
+            password_hash: nueva, password_visible: nueva 
+        }).eq('id', id);
         if (error) throw error;
-        alert(`✅ Contraseña actualizada para "${nombre}"\nNueva contraseña: ${nuevaPassword}`);
+        Toast.success(`Contraseña actualizada para ${nombre}`);
         await refrescarListaTrabajadores();
-        
     } catch (err) {
-        alert('❌ Error: ' + err.message);
+        Toast.error('Error: ' + err.message);
     }
 }
 
-function revelePassword(id, passwordReal) {
-    const span = document.getElementById(`pass-${id}`);
-    if (!span) return;
-    
-    span.textContent = passwordReal;
-    span.style.filter = 'blur(0px)';
-    
-    setTimeout(() => {
-        span.textContent = '••••••';
-        span.style.filter = 'blur(4px)';
-    }, 5000);
+// ============================================
+// EFECTO VIDRIO OPACO PARA CONTRASEÑAS
+// ============================================
+
+function togglePasswordReveal(elemento, password) {
+    const span = elemento.querySelector('.password-text');
+    const icono = elemento.querySelector('.password-icon');
+
+    if (span.classList.contains('revealed')) {
+        // Ocultar
+        span.textContent = password;
+        span.classList.remove('revealed');
+        icono.textContent = '👁️';
+        elemento.classList.remove('revealed');
+    } else {
+        // Revelar
+        span.textContent = password;
+        span.classList.add('revealed');
+        icono.textContent = '🙈';
+        elemento.classList.add('revealed');
+    }
 }
 
 async function refrescarListaTrabajadores() {
     const listaDiv = document.getElementById('listaTrabajadores');
-    listaDiv.innerHTML = '<div class="loading">Cargando...</div>';
-    
+    if (!listaDiv) return;
+    listaDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Cargando...</p></div>';
+
     try {
         const { data: trabajadores, error } = await db
             .from('usuarios')
             .select('*')
             .eq('rol', 'trabajador')
             .order('nombre');
-        
+
         if (error) throw error;
-        
+
         const { data: usuarioAreas } = await db.from('usuario_areas').select('*');
         const { data: areas } = await db.from('areas').select('*');
-        
+
         trabajadoresData = trabajadores || [];
-        
+
         if (trabajadoresData.length === 0) {
-            listaDiv.innerHTML = '<div class="alert alert-info" style="text-align: center;">No hay trabajadores registrados. Haz clic en "➕ Nuevo Trabajador" para comenzar.</div>';
+            listaDiv.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">👷</div>
+                    <div class="empty-state-title">No hay trabajadores</div>
+                    <div class="empty-state-desc">Agrega trabajadores para asignarles pedidos</div>
+                    <button class="btn btn-success" onclick="mostrarFormularioTrabajador()">➕ Nuevo Trabajador</button>
+                </div>
+            `;
             return;
         }
-        
+
         let html = `
-            <div style="overflow-x: auto; width: 100%;">
-                <table style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
+            <div class="table-container">
+                <table>
                     <thead>
-                        <tr style="background: #1a73e8; color: white;">
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">ID</th>
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Nombre</th>
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Email</th>
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Contraseña</th>
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Áreas</th>
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Estado</th>
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Acciones</th>
+                        <tr>
+                            <th>Trabajador</th>
+                            <th>Email</th>
+                            <th>Contraseña</th>
+                            <th>Áreas</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
-        
+
         for (const t of trabajadoresData) {
             const areasIds = usuarioAreas?.filter(ua => ua.usuario_id === t.id).map(ua => ua.area_id) || [];
-            const areasNombres = areas?.filter(a => areasIds.includes(a.id)).map(a => `${a.icono || '📁'} ${a.nombre}`).join(', ') || 'Sin áreas';
-            
+            const areasNombres = areas?.filter(a => areasIds.includes(a.id)).map(a => `${a.icono || '🔧'} ${a.nombre}`).join(', ') || 'Sin áreas';
+
+            const passwordReal = t.password_visible || 'Sin contraseña';
+            const passwordCorta = passwordReal.length > 12 ? passwordReal.substring(0, 12) + '...' : passwordReal;
+
             html += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px; border: 1px solid #ddd;">${t.id}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><strong>${t.nombre}</strong></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">${t.email}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">
-                        <span id="pass-${t.id}" style="filter: blur(4px); cursor: pointer;" onclick="revelePassword(${t.id}, '${(t.password_visible || '').replace(/'/g, "\\'")}')">••••••</span>
-                        <button class="btn" style="background: #17a2b8; padding: 4px 8px; font-size: 11px; margin-left: 8px; border: none; border-radius: 4px; color: white; cursor: pointer;" onclick="resetearPassword(${t.id}, '${t.nombre}')">🔑 Cambiar</button>
+                <tr>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="user-avatar" style="width:36px; height:36px; font-size:0.875rem;">${t.nombre?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2)}</div>
+                            <div style="font-weight:600;">${t.nombre}</div>
+                        </div>
                     </td>
-                    <td style="padding: 8px; border: 1px solid #ddd;"><small>${areasNombres}</small></td>
-                    <td style="padding: 8px; border: 1px solid #ddd;">
-                        <span style="background: ${t.activo ? '#28a745' : '#dc3545'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px;">
+                    <td class="text-sm">${t.email}</td>
+                    <td>
+                        <div class="password-glass" onclick="togglePasswordReveal(this, '${passwordReal.replace(/'/g, "\'")}')" title="Haz clic para revelar la contraseña">
+                            <span class="password-text">${passwordCorta}</span>
+                            <span class="password-icon">👁️</span>
+                        </div>
+                    </td>
+                    <td><span class="text-muted text-sm">${areasNombres}</span></td>
+                    <td>
+                        <span class="badge" style="background:${t.activo ? 'var(--success-light)' : 'var(--danger-light)'}; color:${t.activo ? 'var(--success)' : 'var(--danger)'};">
                             ${t.activo ? '✅ Activo' : '❌ Inactivo'}
                         </span>
                     </td>
-                    <td style="padding: 8px; border: 1px solid #ddd; white-space: nowrap;">
-                        <button class="btn" style="background: #ffc107; color: #333; padding: 4px 8px; font-size: 11px; margin-right: 4px; border: none; border-radius: 4px; cursor: pointer;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️ Editar</button>
-                        <button class="btn" style="background: ${t.activo ? '#dc3545' : '#28a745'}; color: white; padding: 4px 8px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre}')">
-                            ${t.activo ? '❌ Desactivar' : '✅ Activar'}
-                        </button>
+                    <td>
+                        <div style="display:flex; gap:0.25rem;">
+                            <button class="btn btn-warning btn-sm" style="padding:0.3rem 0.6rem; font-size:0.7rem;" onclick='editarTrabajador(${JSON.stringify(t).replace(/'/g, "&apos;")}, ${JSON.stringify(areasIds)})'>✏️</button>
+                            <button class="btn btn-secondary btn-sm" style="padding:0.3rem 0.6rem; font-size:0.7rem;" onclick="toggleActivoTrabajador(${t.id}, ${!t.activo}, '${t.nombre.replace(/'/g, "\'")}')">
+                                ${t.activo ? '❌' : '✅'}
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
         }
-        
-        html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
+
+        html += `</tbody></table></div>`;
         listaDiv.innerHTML = html;
-        
     } catch (err) {
-        console.error('Error cargando trabajadores:', err);
-        listaDiv.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        console.error('Error:', err);
+        listaDiv.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div>Error: ${err.message}</div></div>`;
     }
 }
 
-// Exponer funciones globalmente
+window.cargarTrabajadores = cargarTrabajadores;
+window.mostrarFormularioTrabajador = mostrarFormularioTrabajador;
 window.editarTrabajador = editarTrabajador;
+window.ocultarFormularioTrabajador = ocultarFormularioTrabajador;
+window.guardarTrabajador = guardarTrabajador;
 window.toggleActivoTrabajador = toggleActivoTrabajador;
 window.resetearPassword = resetearPassword;
-window.cargarTrabajadores = cargarTrabajadores;
-window.revelePassword = revelePassword;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.togglePasswordReveal = togglePasswordReveal;
