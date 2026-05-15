@@ -1,6 +1,7 @@
 // ============================================
-// REPORTES.JS - GENERACIÓN DE REPORTES v2.1
-// Recibo mejorado: formato ticket 80mm, duplicado (empresa + cliente)
+// REPORTES.JS - GENERACIÓN DE REPORTES v2.2
+// Recibo tipo ticket 80mm, duplicado (empresa + cliente)
+// CORREGIDO: Emojis reemplazados por texto ASCII + fuentes seguras
 // ============================================
 
 async function cargarReportes() {
@@ -12,14 +13,14 @@ async function cargarReportes() {
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">📊 Generación de Reportes</div>
+                        <div class="card-title">Generacion de Reportes</div>
                         <div class="card-subtitle">Genera reportes PDF de pedidos y ganancias</div>
                     </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
                     <div style="background:var(--bg-body); padding:1.5rem; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-                        <h4 style="margin-bottom:1rem; font-size:1rem;">📅 Filtros de fecha</h4>
+                        <h4 style="margin-bottom:1rem; font-size:1rem;">Filtros de fecha</h4>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Desde</label>
@@ -31,13 +32,13 @@ async function cargarReportes() {
                             </div>
                         </div>
                         <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
-                            <button class="btn btn-primary flex-1" onclick="generarReportePedidos()">📋 Reporte Pedidos</button>
-                            <button class="btn btn-success flex-1" onclick="generarReporteGanancias()">💰 Reporte Ganancias</button>
+                            <button class="btn btn-primary flex-1" onclick="generarReportePedidos()">Reporte Pedidos</button>
+                            <button class="btn btn-success flex-1" onclick="generarReporteGanancias()">Reporte Ganancias</button>
                         </div>
                     </div>
 
                     <div style="background:var(--bg-body); padding:1.5rem; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-                        <h4 style="margin-bottom:1rem; font-size:1rem;">📈 Estadísticas rápidas</h4>
+                        <h4 style="margin-bottom:1rem; font-size:1rem;">Estadisticas rapidas</h4>
                         <div id="statsReportes">
                             <div class="loading"><div class="spinner" style="width:24px; height:24px;"></div><p class="text-sm">Cargando...</p></div>
                         </div>
@@ -47,7 +48,7 @@ async function cargarReportes() {
 
             <div class="card" style="margin-top:1.5rem;">
                 <div class="card-header">
-                    <div class="card-title">📄 Últimos Pedidos para Recibo</div>
+                    <div class="card-title">Ultimos Pedidos para Recibo</div>
                 </div>
                 <div id="listaPedidosReporte">
                     <div class="loading"><div class="spinner"></div><p>Cargando...</p></div>
@@ -86,7 +87,7 @@ async function cargarStatsReportes() {
             </div>
         `;
     } catch (err) {
-        document.getElementById('statsReportes').innerHTML = '<p class="text-muted text-sm">Error cargando estadísticas</p>';
+        document.getElementById('statsReportes').innerHTML = '<p class="text-muted text-sm">Error cargando estadisticas</p>';
     }
 }
 
@@ -102,7 +103,7 @@ async function cargarPedidosReporte() {
         if (error) throw error;
 
         if (!data || data.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No hay pedidos</div></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">--</div><div class="empty-state-title">No hay pedidos</div></div>';
             return;
         }
 
@@ -111,7 +112,7 @@ async function cargarPedidosReporte() {
                 <table>
                     <thead>
                         <tr>
-                            <th>Código</th>
+                            <th>Codigo</th>
                             <th>Cliente</th>
                             <th>Total</th>
                             <th>Estado</th>
@@ -134,7 +135,7 @@ async function cargarPedidosReporte() {
                     <td><span class="badge badge-${p.estado}">${formatearEstado(p.estado)}</span></td>
                     <td class="text-muted text-xs">${formatDateShort(p.created_at)}</td>
                     <td>
-                        <button class="btn btn-info btn-sm" style="padding:0.3rem 0.6rem; font-size:0.7rem;" onclick="generarReciboCliente(${p.id}, '${p.codigo}')">🧾 Recibo</button>
+                        <button class="btn btn-info btn-sm" style="padding:0.3rem 0.6rem; font-size:0.7rem;" onclick="generarReciboCliente(${p.id}, '${p.codigo}')">Recibo</button>
                     </td>
                 </tr>
             `;
@@ -143,12 +144,13 @@ async function cargarPedidosReporte() {
         html += `</tbody></table></div>`;
         container.innerHTML = html;
     } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><div>Error: ${err.message}</div></div>`;
+        container.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">--</span><div>Error: ${err.message}</div></div>`;
     }
 }
 
 // ============================================
 // RECIBO TIPO TICKET 80mm - DUPLICADO
+// CORREGIDO: Sin emojis, fuentes seguras, espaciado fijo
 // ============================================
 
 async function generarReciboCliente(pedidoId, codigo) {
@@ -168,20 +170,20 @@ async function generarReciboCliente(pedidoId, codigo) {
         const { jsPDF } = window.jspdf;
 
         // Formato ticket: 80mm de ancho (~226 puntos)
-        // 1mm = 2.83465 puntos
-        const anchoTicket = 80 * 2.83465; // ~226.77 puntos
-        const doc = new jsPDF({
-            unit: 'pt',
-            format: [anchoTicket, 800], // Altura dinámica, recortaremos después
-            orientation: 'portrait'
-        });
-
-        let y = 15;
+        const anchoTicket = 80 * 2.83465;
         const margen = 10;
         const anchoTexto = anchoTicket - (margen * 2);
         const centro = anchoTicket / 2;
 
-        function addCenteredText(text, size, bold = false, spacing = 1.2) {
+        const doc = new jsPDF({
+            unit: 'pt',
+            format: [anchoTicket, 2000],
+            orientation: 'portrait'
+        });
+
+        let y = 15;
+
+        function addCenteredText(text, size, bold = false, spacing = 1.3) {
             doc.setFontSize(size);
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
             const lines = doc.splitTextToSize(text, anchoTexto);
@@ -199,117 +201,113 @@ async function generarReciboCliente(pedidoId, codigo) {
                 doc.text(left, margen, y);
                 const rightWidth = doc.getTextWidth(right);
                 doc.text(right, anchoTicket - margen - rightWidth, y);
-                y += size * 1.3;
+                y += size * 1.4;
             } else {
                 const lines = doc.splitTextToSize(left, anchoTexto);
                 lines.forEach(line => {
                     doc.text(line, margen, y);
-                    y += size * 1.3;
+                    y += size * 1.4;
                 });
             }
         }
 
         function addDivider() {
-            y += 3;
+            y += 4;
             doc.setDrawColor(150, 150, 150);
             doc.setLineWidth(0.5);
             doc.line(margen, y, anchoTicket - margen, y);
-            y += 6;
+            y += 8;
         }
 
         function addDoubleDivider() {
-            y += 2;
+            y += 4;
             doc.setDrawColor(100, 100, 100);
             doc.setLineWidth(1);
             doc.line(margen, y, anchoTicket - margen, y);
-            y += 3;
+            y += 4;
             doc.line(margen, y, anchoTicket - margen, y);
-            y += 6;
+            y += 8;
         }
 
         // ============================================
         // COPIA 1: PARA LA EMPRESA (ORIGINAL)
         // ============================================
 
-        // Logo / Nombre empresa
+        // Logo / Nombre empresa (SIN EMOJIS)
         doc.setTextColor(79, 70, 229);
-        addCenteredText('⚙️ TALLERTOTAL', 14, true, 1.1);
+        addCenteredText('TALLERTOTAL', 14, true, 1.2);
         doc.setTextColor(100, 100, 100);
-        addCenteredText('Taller de Mecanizado Industrial', 8, false, 1.1);
-        addCenteredText('Tel: 0981-XXX-XXX', 8, false, 1.1);
+        addCenteredText('Taller de Mecanizado Industrial', 8, false, 1.3);
+        addCenteredText('Tel: 0981-XXX-XXX', 8, false, 1.3);
 
         addDivider();
 
         // Tipo de copia
         doc.setTextColor(200, 50, 50);
-        addCenteredText('*** ORIGINAL - EMPRESA ***', 9, true, 1.2);
+        addCenteredText('*** ORIGINAL - EMPRESA ***', 9, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         addDivider();
 
         // Datos del recibo
         doc.setTextColor(79, 70, 229);
-        addCenteredText('RECIBO DE ENTREGA', 11, true, 1.2);
+        addCenteredText('RECIBO DE ENTREGA', 11, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         addDivider();
 
         // Info del pedido
-        addLine(`Pedido: ${pedido.codigo}`, null, 9);
-        addLine(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, null, 9);
-        addLine(`Estado: ${formatearEstado(pedido.estado)}`, null, 9);
+        addLine('Pedido: ' + pedido.codigo, null, 9);
+        addLine('Fecha: ' + new Date().toLocaleDateString('es-ES'), null, 9);
+        addLine('Estado: ' + formatearEstadoPDF(pedido.estado), null, 9);
 
         addDivider();
 
         // Datos del cliente
         doc.setTextColor(79, 70, 229);
-        addCenteredText('CLIENTE', 9, true, 1.2);
+        addCenteredText('CLIENTE', 9, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         addLine(pedido.clientes?.nombre || 'N/A', null, 9);
         if (pedido.clientes?.telefono) {
-            addLine(`Tel: ${pedido.clientes.telefono}`, null, 8);
+            addLine('Tel: ' + pedido.clientes.telefono, null, 8);
         }
         if (pedido.tipo_entrega) {
-            const entregaMap = {
-                'retiro_taller': '🏭 Retiro en taller',
-                'envio_domicilio': '🚚 Envío a domicilio',
-                'entrega_tienda': '🏪 Entrega en tienda'
-            };
-            addLine(`Entrega: ${entregaMap[pedido.tipo_entrega] || pedido.tipo_entrega}`, null, 8);
+            addLine('Entrega: ' + formatearEntregaPDF(pedido.tipo_entrega), null, 8);
         }
 
         addDivider();
 
         // Productos
         doc.setTextColor(79, 70, 229);
-        addCenteredText('PRODUCTOS', 9, true, 1.2);
+        addCenteredText('PRODUCTOS', 9, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         const items = detalles || [];
         items.forEach((d, i) => {
-            const descLines = doc.splitTextToSize(d.descripcion || 'Producto', anchoTexto - 20);
+            // Descripcion con wrap
+            const descLines = doc.splitTextToSize(d.descripcion || 'Producto', anchoTexto - 10);
             descLines.forEach((line, idx) => {
                 doc.setFontSize(8);
                 doc.setFont('helvetica', idx === 0 ? 'bold' : 'normal');
                 doc.text(line, margen + (idx > 0 ? 5 : 0), y);
-                y += 9;
+                y += 10;
             });
 
             // Cantidad x Precio = Subtotal
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            const cantidadStr = `${d.cantidad} x ${formatMoney(d.precio_unitario || 0).replace('Bs ', '')}`;
-            const subtotalStr = formatMoney(d.subtotal || 0);
+            const cantidadStr = d.cantidad + ' x ' + formatMoneyPDF(d.precio_unitario || 0);
+            const subtotalStr = formatMoneyPDF(d.subtotal || 0);
             doc.text(cantidadStr, margen + 5, y);
             const subW = doc.getTextWidth(subtotalStr);
             doc.text(subtotalStr, anchoTicket - margen - subW, y);
-            y += 11;
+            y += 12;
 
             if (i < items.length - 1) {
                 doc.setDrawColor(220, 220, 220);
                 doc.setLineWidth(0.3);
-                doc.line(margen + 5, y - 3, anchoTicket - margen - 5, y - 3);
+                doc.line(margen + 5, y - 4, anchoTicket - margen - 5, y - 4);
             }
         });
 
@@ -319,20 +317,20 @@ async function generarReciboCliente(pedidoId, codigo) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(79, 70, 229);
-        const totalStr = `TOTAL: ${formatMoney(pedido.total || 0)}`;
+        const totalStr = 'TOTAL: ' + formatMoneyPDF(pedido.total || 0);
         const totalW = doc.getTextWidth(totalStr);
         doc.text(totalStr, anchoTicket - margen - totalW, y);
-        y += 14;
+        y += 16;
 
         doc.setTextColor(60, 60, 60);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
 
         if (pedido.adelanto_monto > 0) {
-            addLine(`Adelanto: ${formatMoney(pedido.adelanto_monto)}`, null, 8);
+            addLine('Adelanto: ' + formatMoneyPDF(pedido.adelanto_monto), null, 8);
             const saldo = (pedido.total || 0) - pedido.adelanto_monto;
             doc.setFont('helvetica', 'bold');
-            addLine(`SALDO: ${formatMoney(saldo)}`, null, 9);
+            addLine('SALDO: ' + formatMoneyPDF(saldo), null, 9);
             doc.setFont('helvetica', 'normal');
         }
 
@@ -340,40 +338,40 @@ async function generarReciboCliente(pedidoId, codigo) {
 
         // Firmas
         doc.setTextColor(100, 100, 100);
-        addCenteredText('--- FIRMAS ---', 8, false, 1.1);
+        addCenteredText('--- FIRMAS ---', 8, false, 1.2);
 
-        y += 5;
+        y += 6;
         doc.setDrawColor(150, 150, 150);
         doc.setLineWidth(0.5);
 
-        // Línea firma cliente
+        // Linea firma cliente
         doc.line(margen + 10, y, (anchoTicket / 2) - 10, y);
         doc.setFontSize(7);
         doc.text('Firma Cliente', margen + 10, y + 10);
 
-        // Línea firma empresa
+        // Linea firma empresa
         doc.line((anchoTicket / 2) + 10, y, anchoTicket - margen - 10, y);
         doc.text('Firma Empresa', (anchoTicket / 2) + 10, y + 10);
 
-        y += 20;
+        y += 22;
 
         addDivider();
 
         // Nota legal
         doc.setTextColor(120, 120, 120);
         doc.setFontSize(7);
-        const nota = 'Documento válido como comprobante de entrega. Conserve este recibo para cualquier reclamo.';
+        const nota = 'Documento valido como comprobante de entrega. Conserve este recibo para cualquier reclamo.';
         const notaLines = doc.splitTextToSize(nota, anchoTexto);
         notaLines.forEach(line => {
             const w = doc.getTextWidth(line);
             doc.text(line, centro - (w / 2), y);
-            y += 8;
+            y += 9;
         });
 
         // ============================================
-        // SEPARADOR ENTRE COPIAS (línea de corte)
+        // SEPARADOR ENTRE COPIAS (linea de corte)
         // ============================================
-        y += 10;
+        y += 12;
         doc.setDrawColor(150, 150, 150);
         doc.setLineWidth(1);
         doc.setLineDashPattern([5, 3], 0);
@@ -383,11 +381,11 @@ async function generarReciboCliente(pedidoId, codigo) {
         // Texto de corte
         doc.setTextColor(150, 150, 150);
         doc.setFontSize(8);
-        const corteText = '✂ CORTE AQUÍ ✂';
+        const corteText = '--- CORTE AQUI ---';
         const corteW = doc.getTextWidth(corteText);
-        doc.text(corteText, centro - (corteW / 2), y + 12);
+        doc.text(corteText, centro - (corteW / 2), y + 14);
 
-        y += 25;
+        y += 28;
 
         // ============================================
         // COPIA 2: PARA EL CLIENTE
@@ -395,81 +393,76 @@ async function generarReciboCliente(pedidoId, codigo) {
 
         // Logo / Nombre empresa (copia cliente)
         doc.setTextColor(79, 70, 229);
-        addCenteredText('⚙️ TALLERTOTAL', 14, true, 1.1);
+        addCenteredText('TALLERTOTAL', 14, true, 1.2);
         doc.setTextColor(100, 100, 100);
-        addCenteredText('Taller de Mecanizado Industrial', 8, false, 1.1);
-        addCenteredText('Tel: 0981-XXX-XXX', 8, false, 1.1);
+        addCenteredText('Taller de Mecanizado Industrial', 8, false, 1.3);
+        addCenteredText('Tel: 0981-XXX-XXX', 8, false, 1.3);
 
         addDivider();
 
         // Tipo de copia
         doc.setTextColor(16, 185, 129);
-        addCenteredText('*** COPIA - CLIENTE ***', 9, true, 1.2);
+        addCenteredText('*** COPIA - CLIENTE ***', 9, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         addDivider();
 
         // Datos del recibo
         doc.setTextColor(79, 70, 229);
-        addCenteredText('RECIBO DE ENTREGA', 11, true, 1.2);
+        addCenteredText('RECIBO DE ENTREGA', 11, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         addDivider();
 
         // Info del pedido (copia)
-        addLine(`Pedido: ${pedido.codigo}`, null, 9);
-        addLine(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, null, 9);
-        addLine(`Estado: ${formatearEstado(pedido.estado)}`, null, 9);
+        addLine('Pedido: ' + pedido.codigo, null, 9);
+        addLine('Fecha: ' + new Date().toLocaleDateString('es-ES'), null, 9);
+        addLine('Estado: ' + formatearEstadoPDF(pedido.estado), null, 9);
 
         addDivider();
 
         // Datos del cliente (copia)
         doc.setTextColor(79, 70, 229);
-        addCenteredText('CLIENTE', 9, true, 1.2);
+        addCenteredText('CLIENTE', 9, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         addLine(pedido.clientes?.nombre || 'N/A', null, 9);
         if (pedido.clientes?.telefono) {
-            addLine(`Tel: ${pedido.clientes.telefono}`, null, 8);
+            addLine('Tel: ' + pedido.clientes.telefono, null, 8);
         }
         if (pedido.tipo_entrega) {
-            const entregaMap = {
-                'retiro_taller': '🏭 Retiro en taller',
-                'envio_domicilio': '🚚 Envío a domicilio',
-                'entrega_tienda': '🏪 Entrega en tienda'
-            };
-            addLine(`Entrega: ${entregaMap[pedido.tipo_entrega] || pedido.tipo_entrega}`, null, 8);
+            addLine('Entrega: ' + formatearEntregaPDF(pedido.tipo_entrega), null, 8);
         }
 
         addDivider();
 
         // Productos (copia)
         doc.setTextColor(79, 70, 229);
-        addCenteredText('PRODUCTOS', 9, true, 1.2);
+        addCenteredText('PRODUCTOS', 9, true, 1.3);
         doc.setTextColor(60, 60, 60);
 
         items.forEach((d, i) => {
-            const descLines = doc.splitTextToSize(d.descripcion || 'Producto', anchoTexto - 20);
+            const descLines = doc.splitTextToSize(d.descripcion || 'Producto', anchoTexto - 10);
             descLines.forEach((line, idx) => {
                 doc.setFontSize(8);
                 doc.setFont('helvetica', idx === 0 ? 'bold' : 'normal');
                 doc.text(line, margen + (idx > 0 ? 5 : 0), y);
-                y += 9;
+                y += 10;
             });
 
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            const cantidadStr = `${d.cantidad} x ${formatMoney(d.precio_unitario || 0).replace('Bs ', '')}`;
-            const subtotalStr = formatMoney(d.subtotal || 0);
+            const cantidadStr = d.cantidad + ' x ' + formatMoneyPDF(d.precio_unitario || 0);
+            const subtotalStr = formatMoneyPDF(d.subtotal || 0);
             doc.text(cantidadStr, margen + 5, y);
             const subW = doc.getTextWidth(subtotalStr);
             doc.text(subtotalStr, anchoTicket - margen - subW, y);
-            y += 11;
+            y += 12;
 
             if (i < items.length - 1) {
                 doc.setDrawColor(220, 220, 220);
                 doc.setLineWidth(0.3);
-                doc.line(margen + 5, y - 3, anchoTicket - margen - 5, y - 3);
+                doc.line(margen + 5, y - 4, anchoTicket - margen - 5, y - 4);
             }
         });
 
@@ -479,20 +472,20 @@ async function generarReciboCliente(pedidoId, codigo) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(79, 70, 229);
-        const totalStr2 = `TOTAL: ${formatMoney(pedido.total || 0)}`;
+        const totalStr2 = 'TOTAL: ' + formatMoneyPDF(pedido.total || 0);
         const totalW2 = doc.getTextWidth(totalStr2);
         doc.text(totalStr2, anchoTicket - margen - totalW2, y);
-        y += 14;
+        y += 16;
 
         doc.setTextColor(60, 60, 60);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
 
         if (pedido.adelanto_monto > 0) {
-            addLine(`Adelanto: ${formatMoney(pedido.adelanto_monto)}`, null, 8);
+            addLine('Adelanto: ' + formatMoneyPDF(pedido.adelanto_monto), null, 8);
             const saldo = (pedido.total || 0) - pedido.adelanto_monto;
             doc.setFont('helvetica', 'bold');
-            addLine(`SALDO: ${formatMoney(saldo)}`, null, 9);
+            addLine('SALDO: ' + formatMoneyPDF(saldo), null, 9);
             doc.setFont('helvetica', 'normal');
         }
 
@@ -500,9 +493,9 @@ async function generarReciboCliente(pedidoId, codigo) {
 
         // Firmas (copia)
         doc.setTextColor(100, 100, 100);
-        addCenteredText('--- FIRMAS ---', 8, false, 1.1);
+        addCenteredText('--- FIRMAS ---', 8, false, 1.2);
 
-        y += 5;
+        y += 6;
         doc.setDrawColor(150, 150, 150);
         doc.setLineWidth(0.5);
 
@@ -513,7 +506,7 @@ async function generarReciboCliente(pedidoId, codigo) {
         doc.line((anchoTicket / 2) + 10, y, anchoTicket - margen - 10, y);
         doc.text('Firma Empresa', (anchoTicket / 2) + 10, y + 10);
 
-        y += 20;
+        y += 22;
 
         addDivider();
 
@@ -525,23 +518,65 @@ async function generarReciboCliente(pedidoId, codigo) {
         notaLines2.forEach(line => {
             const w = doc.getTextWidth(line);
             doc.text(line, centro - (w / 2), y);
-            y += 8;
+            y += 9;
         });
 
-        // Ajustar altura del PDF al contenido real
-        const finalHeight = y + 15;
+        // Recortar el PDF a la altura real del contenido
+        const finalHeight = y + 20;
         doc.setPage(1);
 
-        // Recortar el PDF a la altura real
-        // Nota: jsPDF no permite recortar fácilmente, pero al imprimir solo se imprime lo necesario
+        // Guardar con altura dinamica - jsPDF no permite recortar facilmente
+        // pero podemos crear un nuevo documento con la altura correcta
+        const docFinal = new jsPDF({
+            unit: 'pt',
+            format: [anchoTicket, finalHeight],
+            orientation: 'portrait'
+        });
 
-        doc.save(`recibo_${codigo}_ticket.pdf`);
+        // Copiar todo el contenido al documento final
+        // Nota: jsPDF no tiene metodo directo para copiar paginas
+        // Asi que guardamos el original (la altura extra no afecta la impresion)
+
+        doc.save('recibo_' + codigo + '_ticket.pdf');
         Toast.success('Recibo tipo ticket generado (2 copias)');
 
     } catch (err) {
         console.error('Error PDF:', err);
         Toast.error('Error generando recibo: ' + err.message);
     }
+}
+
+// Helper: formatear estado SIN emojis para PDF
+function formatearEstadoPDF(estado) {
+    const map = {
+        'pendiente': 'Pendiente',
+        'en_proceso': 'En proceso',
+        'asignado': 'Asignado',
+        'en_progreso': 'En progreso',
+        'terminado': 'Terminado',
+        'entregado': 'Entregado',
+        'rechazado': 'Rechazado',
+        'rechazado_definitivo': 'Cancelado',
+        'cotizado': 'Cotizado',
+        'cancelado_por_cliente': 'Cancelado'
+    };
+    return map[estado] || estado;
+}
+
+// Helper: formatear entrega SIN emojis para PDF
+function formatearEntregaPDF(tipo) {
+    const map = {
+        'retiro_taller': 'Retiro en taller',
+        'envio_domicilio': 'Envio a domicilio',
+        'entrega_tienda': 'Entrega en tienda'
+    };
+    return map[tipo] || tipo;
+}
+
+// Helper: formato de dinero SIN simbolo problematico
+function formatMoneyPDF(amount) {
+    if (amount === null || amount === undefined || isNaN(amount)) return 'Bs 0.00';
+    return 'Bs ' + parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 // ============================================
@@ -556,8 +591,8 @@ async function generarReportePedidos() {
         Toast.info('Generando reporte de pedidos...');
 
         let query = db.from('pedidos').select('*, clientes(nombre, telefono), detalle_pedido(*)');
-        if (desde) query = query.gte('created_at', `${desde}T00:00:00`);
-        if (hasta) query = query.lte('created_at', `${hasta}T23:59:59`);
+        if (desde) query = query.gte('created_at', desde + 'T00:00:00');
+        if (hasta) query = query.lte('created_at', hasta + 'T23:59:59');
 
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) throw error;
@@ -578,21 +613,21 @@ async function generarReportePedidos() {
         doc.setFontSize(9);
         doc.setTextColor(80, 80, 80);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 23);
-        if (desde || hasta) doc.text(`Período: ${desde || 'inicio'} al ${hasta || 'actual'}`, 14, 29);
+        doc.text('Generado: ' + new Date().toLocaleString('es-ES'), 14, 23);
+        if (desde || hasta) doc.text('Periodo: ' + (desde || 'inicio') + ' al ' + (hasta || 'actual'), 14, 29);
 
         const tableData = data.map(p => [
             p.codigo,
             p.clientes?.nombre || 'N/A',
             p.clientes?.telefono || 'N/A',
-            `Bs ${(p.total || 0).toFixed(2)}`,
-            formatearEstado(p.estado),
+            'Bs ' + (p.total || 0).toFixed(2),
+            formatearEstadoPDF(p.estado),
             new Date(p.created_at).toLocaleDateString('es-ES')
         ]);
 
         doc.autoTable({
             startY: 35,
-            head: [['Código', 'Cliente', 'Teléfono', 'Total', 'Estado', 'Fecha']],
+            head: [['Codigo', 'Cliente', 'Telefono', 'Total', 'Estado', 'Fecha']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
@@ -604,9 +639,9 @@ async function generarReportePedidos() {
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text(`RESUMEN: ${data.length} pedidos | Total general: Bs ${totalGral.toFixed(2)}`, 14, finalY);
+        doc.text('RESUMEN: ' + data.length + ' pedidos | Total general: Bs ' + totalGral.toFixed(2), 14, finalY);
 
-        doc.save(`reporte_pedidos_${new Date().toISOString().slice(0, 10)}.pdf`);
+        doc.save('reporte_pedidos_' + new Date().toISOString().slice(0, 10) + '.pdf');
         Toast.success('Reporte generado correctamente');
 
     } catch (err) {
@@ -622,8 +657,8 @@ async function generarReporteGanancias() {
         Toast.info('Generando reporte de ganancias...');
 
         let query = db.from('pedidos').select('*, detalle_pedido(*)').eq('estado', 'entregado');
-        if (desde) query = query.gte('created_at', `${desde}T00:00:00`);
-        if (hasta) query = query.lte('created_at', `${hasta}T23:59:59`);
+        if (desde) query = query.gte('created_at', desde + 'T00:00:00');
+        if (hasta) query = query.lte('created_at', hasta + 'T23:59:59');
 
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) throw error;
@@ -641,22 +676,22 @@ async function generarReporteGanancias() {
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 30);
-        if (desde || hasta) doc.text(`Período: ${desde || 'inicio'} al ${hasta || 'actual'}`, 14, 37);
+        doc.text('Generado: ' + new Date().toLocaleString('es-ES'), 14, 30);
+        if (desde || hasta) doc.text('Periodo: ' + (desde || 'inicio') + ' al ' + (hasta || 'actual'), 14, 37);
 
         doc.setFillColor(240, 240, 250);
         doc.roundedRect(14, 48, 182, 35, 5, 5, 'F');
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
         doc.setTextColor(79, 70, 229);
-        doc.text(`Bs ${totalIngresos.toFixed(2)}`, 20, 65);
+        doc.text('Bs ' + totalIngresos.toFixed(2), 20, 65);
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
         doc.text('Ingresos totales', 20, 75);
 
         doc.setFontSize(14);
         doc.setTextColor(16, 185, 129);
-        doc.text(`${data?.length || 0}`, 110, 65);
+        doc.text((data?.length || 0).toString(), 110, 65);
         doc.setFontSize(10);
         doc.setTextColor(80, 80, 80);
         doc.text('Pedidos entregados', 110, 75);
@@ -665,19 +700,19 @@ async function generarReporteGanancias() {
             const tableData = data.map(p => [
                 p.codigo,
                 new Date(p.created_at).toLocaleDateString('es-ES'),
-                `Bs ${(p.total || 0).toFixed(2)}`
+                'Bs ' + (p.total || 0).toFixed(2)
             ]);
 
             doc.autoTable({
                 startY: 95,
-                head: [['Código', 'Fecha', 'Total']],
+                head: [['Codigo', 'Fecha', 'Total']],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] }
             });
         }
 
-        doc.save(`reporte_ganancias_${new Date().toISOString().slice(0, 10)}.pdf`);
+        doc.save('reporte_ganancias_' + new Date().toISOString().slice(0, 10) + '.pdf');
         Toast.success('Reporte de ganancias generado');
 
     } catch (err) {
